@@ -1,0 +1,6 @@
+# dependencies
+/vendor
+/node_modules
+
+# build
+/dist
