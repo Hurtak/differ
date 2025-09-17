@@ -12,6 +12,8 @@ alwaysApply: true
 
 ## Key Commands
 
+- `deno task test` - Run all tests
+- `deno task test src/path/test-name.ts` - Run a specific test
 - `deno task check` - Run the checks script (types, linting, formatting, building)
 - `deno task fix` - Fix formatting and linting issues
 - `deno task dev` - Run the development server
