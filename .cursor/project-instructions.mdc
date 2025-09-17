@@ -1,0 +1,22 @@
+---
+description: Project Instructions
+alwaysApply: true
+---
+
+# Project Instructions
+
+## Tooling
+
+- Always use `deno` for running tasks or installing dependencies, see `deno.json`
+- Run check script before completing tasks (`deno task check`)
+
+## Key Commands
+
+- `deno task check` - Run the checks script (types, linting, formatting, building)
+- `deno task fix` - Fix formatting and linting issues
+- `deno task dev` - Run the development server
+
+## Development practices
+
+- Never use `any` or `@ts-ignore` in TypeScript files
+- Prefer functional programming patterns where applicable
