@@ -5,6 +5,8 @@
     "jsr:@std/internal@^1.0.10": "1.0.10",
     "npm:@types/react@^19.1.13": "19.1.13",
     "npm:@vitejs/plugin-react@^5.0.2": "5.0.2_vite@7.1.5__picomatch@4.0.3_@babel+core@7.28.4",
+    "npm:diff@*": "8.0.2",
+    "npm:diff@^8.0.2": "8.0.2",
     "npm:react-dom@^19.1.1": "19.1.1_react@19.1.1",
     "npm:react@^19.1.1": "19.1.1",
     "npm:vite@*": "7.1.5_picomatch@4.0.3",
@@ -504,6 +506,9 @@
         "ms"
       ]
     },
+    "diff@8.0.2": {
+      "integrity": "sha512-sSuxWU5j5SR9QQji/o2qMvqRNYRDOcBTgsJ/DeCf4iSN4gW+gNMXM7wFIP+fdXZxoNiAnHUTGjCr+TSWXdRDKg=="
+    },
     "electron-to-chromium@1.5.218": {
       "integrity": "sha512-uwwdN0TUHs8u6iRgN8vKeWZMRll4gBkz+QMqdS7DDe49uiK68/UX92lFb61oiFPrpYZNeZIqa4bA7O6Aiasnzg=="
     },
@@ -695,6 +700,7 @@
       "jsr:@std/assert@1",
       "npm:@types/react@^19.1.13",
       "npm:@vitejs/plugin-react@^5.0.2",
+      "npm:diff@^8.0.2",
       "npm:react-dom@^19.1.1",
       "npm:react@^19.1.1",
       "npm:vite@^7.1.5"
