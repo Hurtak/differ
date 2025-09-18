@@ -45,7 +45,7 @@ export type DiffRow = {
 
 // Text diff pipeline
 export const parseTextToLines = (text: string): Lines => {
-  return text.split("\n");
+  return text.split(/\n/);
 };
 
 export const computeWordChanges = (before: string, after: string): WordChange[] => {
@@ -106,6 +106,9 @@ export const parseCsvToRows = (text: string): CSVRow[] => {
 
 // Parse a single CSV line, handling quoted fields properly
 export const parseCsvLine = (line: string): string[] => {
+  if (line.at(-1) === "\r") {
+    line = line.slice(0, -1);
+  }
   const result: string[] = [];
   let current = "";
   let inQuotes = false;
