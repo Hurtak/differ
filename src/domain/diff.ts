@@ -161,7 +161,8 @@ export const stripCsvFormattingQuotes = (field: string): string => {
 export const computeCellWordChanges = (beforeCell: string, afterCell: string): WordChange[] => {
   const before = beforeCell || "";
   const after = afterCell || "";
-  return diff.diffWords(before, after, { oneChangePerToken: false, ignoreCase: true });
+
+  return diff.diffWords(before, after);
 };
 
 export const createDiffCells = (
