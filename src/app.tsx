@@ -201,13 +201,12 @@ const TextDiff = ({ diffLines }: { diffLines: DiffLine[] }) => {
       const backgroundColor = diffLine.type === "added" ? "#d4edda" : "#f8d7da";
       const signColor = diffLine.type === "added" ? "#155724" : "#721c24";
       const sign = diffLine.type === "added" ? "+" : "-";
-      const lineType = diffLine.type === "added" ? "added" : "removed";
 
       return (
         <div key={`${diffLine.type}-${diffLine.lineNumber}`} style={{ backgroundColor, padding: "2px 0" }}>
           <span style={{ color: signColor }}>{sign}</span>
           <span style={{ color: "#6c757d" }}>{diffLine.lineNumber}</span>:{" "}
-          {renderWordDiffs(diffLine.wordChanges || [], lineType)}
+          {renderWordDiffs(diffLine.wordChanges || [], diffLine.type)}
         </div>
       );
     }
@@ -314,9 +313,6 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
       const hasChange = cell.hasChange;
 
       if (config.beforeAfterColumn && changedColumns.has(j)) {
-        // Before/After Column mode - add two columns for changed columns
-        const _backgroundColor = hasChange ? "#fff3cd" : "#f8f9fa";
-
         // Before column (old values - highlight removed parts in red)
         rowCells.push(
           <TableCell

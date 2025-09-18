@@ -246,7 +246,7 @@ export const extractCsvHeaders = (
   return headerSource ? headerSource.map(stripCsvFormattingQuotes) : [];
 };
 
-export const generateHeadersWithBeforeAfter = (
+export const generateCSVHeadersWithBeforeAfter = (
   actualHeaders: string[],
   changedColumns: Set<number>,
 ): string[] => {
@@ -254,8 +254,8 @@ export const generateHeadersWithBeforeAfter = (
 
   for (let j = 0; j < actualHeaders.length; j++) {
     if (changedColumns.has(j)) {
-      headers.push(`${actualHeaders[j]} Before`);
-      headers.push(`${actualHeaders[j]} After`);
+      headers.push(`${actualHeaders[j].trim()} Before`);
+      headers.push(`${actualHeaders[j].trim()} After`);
     } else {
       headers.push(actualHeaders[j]);
     }
@@ -328,7 +328,9 @@ export const createCsvDiffTable = (
       : generateCsvHeaders(_maxCols, new Set<number>(), config);
   } else {
     // First row IS header - use actual headers from the data
-    headers = config.beforeAfterColumn ? generateHeadersWithBeforeAfter(actualHeaders, changedColumns) : actualHeaders;
+    headers = config.beforeAfterColumn
+      ? generateCSVHeadersWithBeforeAfter(actualHeaders, changedColumns)
+      : actualHeaders;
   }
 
   return {
@@ -356,19 +358,14 @@ export const computeCsvDiff = (
   return createCsvDiffTable(beforeText, afterText, config);
 };
 
-// Helper function to escape CSV fields (no quoting)
-const escapeCsvField = (field: string): string => {
-  // Return the field as-is without any quoting
-  return field;
-};
-
 // Export functions for downloading
 export const exportDiffTableToCsv = (diffTable: DiffTable, config: DiffConfig): string => {
   const lines: string[] = [];
 
   // Add headers
   if (diffTable.headers.length > 0) {
-    lines.push(diffTable.headers.map(escapeCsvField).join(","));
+    console.log(diffTable.headers);
+    lines.push(diffTable.headers.map(encodeCSVField).join(","));
   }
 
   // Determine which columns have changes for before/after mode
@@ -382,11 +379,11 @@ export const exportDiffTableToCsv = (diffTable: DiffTable, config: DiffConfig): 
     row.cells.forEach((cell, cellIndex) => {
       if (config.beforeAfterColumn && changedColumns.has(cellIndex)) {
         // In before/after mode for changed columns, show both before and after
-        rowData.push(escapeCsvField(cell.before)); // Before value
-        rowData.push(escapeCsvField(cell.after)); // After value
+        rowData.push(encodeCSVField(cell.before)); // Before value
+        rowData.push(encodeCSVField(cell.after)); // After value
       } else {
         // Normal mode or unchanged column - show the after value
-        rowData.push(escapeCsvField(cell.after));
+        rowData.push(encodeCSVField(cell.after));
       }
     });
 
@@ -395,3 +392,6 @@ export const exportDiffTableToCsv = (diffTable: DiffTable, config: DiffConfig): 
 
   return lines.join("\n");
 };
+
+// Helper function to escape CSV fields
+const encodeCSVField = (field: string): string => `"${field}"`;
