@@ -7,6 +7,7 @@ import {
   DiffLine,
   DiffRow,
   DiffTable,
+  exportDiffTableToCsv,
   WordChange,
 } from "./domain/diff.ts";
 
@@ -19,6 +20,7 @@ export const App = () => {
     mode: "text",
     hideUnchangedRows: false,
     beforeAfterColumn: false,
+    firstRowIsHeader: true,
   });
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -38,6 +40,24 @@ export const App = () => {
       reader.readAsText(file);
     }
   }, []);
+
+  const handleDownloadCsv = useCallback(() => {
+    if (config.mode !== "csv") return;
+
+    const diffTable = computeCsvDiff(beforeText, afterText, config);
+    const csvContent = exportDiffTableToCsv(diffTable, config);
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "diff-results.csv");
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [beforeText, afterText, config]);
 
   const renderDiff = () => {
     if (config.mode === "text") {
@@ -123,6 +143,7 @@ export const App = () => {
               onClick={() => setConfig({ ...config, mode: "csv" })}
               style={{
                 padding: "10px 20px",
+                marginRight: "10px",
                 backgroundColor: config.mode === "csv" ? "#007bff" : "#f8f9fa",
                 color: config.mode === "csv" ? "white" : "black",
                 border: "1px solid #dee2e6",
@@ -132,10 +153,26 @@ export const App = () => {
             >
               CSV
             </button>
+            {config.mode === "csv" && (
+              <button
+                type="button"
+                onClick={handleDownloadCsv}
+                style={{
+                  padding: "10px 20px",
+                  backgroundColor: "#28a745",
+                  color: "white",
+                  border: "1px solid #28a745",
+                  borderRadius: "5px",
+                  cursor: "pointer",
+                }}
+              >
+                Download CSV
+              </button>
+            )}
           </div>
 
           {/* Configuration */}
-          <div style={{ marginBottom: "20px" }}>
+          <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
             <label>
               <input
                 type="checkbox"
@@ -146,7 +183,14 @@ export const App = () => {
             </label>
             {config.mode === "csv" && (
               <>
-                {" "}
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={config.firstRowIsHeader}
+                    onChange={(e) => setConfig({ ...config, firstRowIsHeader: e.target.checked })}
+                  />
+                  First row is header
+                </label>
                 <label>
                   <input
                     type="checkbox"
@@ -294,20 +338,6 @@ const renderCellDiffs = (wordChanges: WordChange[]) => {
 const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConfig }) => {
   const changedColumns = config.beforeAfterColumn ? detectChangedColumns(diffTable.rows) : new Set<number>();
 
-  // Create header row
-  const headerCells: React.JSX.Element[] = [];
-  for (let j = 0; j < diffTable.headers.length; j++) {
-    const headerText = diffTable.headers[j];
-    headerCells.push(
-      <td
-        key={`header-${j}`}
-        style={{ backgroundColor: "#e9ecef", padding: "4px", border: "1px solid #dee2e6", fontWeight: "bold" }}
-      >
-        {headerText}
-      </td>,
-    );
-  }
-
   const renderedRows = diffTable.rows.map((diffRow: DiffRow) => {
     const rowCells: React.JSX.Element[] = [];
     let cellIndex = 0;
@@ -320,16 +350,6 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
         // Before/After Column mode - add two columns for changed columns
         const backgroundColor = hasChange ? "#fff3cd" : "#f8f9fa";
 
-        // After column (original column)
-        rowCells.push(
-          <td
-            key={`after-${cellIndex++}`}
-            style={{ backgroundColor, padding: "4px", border: "1px solid #dee2e6" }}
-          >
-            {cell.after}
-          </td>,
-        );
-
         // Before column (new column)
         rowCells.push(
           <td
@@ -337,6 +357,15 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
             style={{ backgroundColor, padding: "4px", border: "1px solid #dee2e6" }}
           >
             {cell.before}
+          </td>,
+        );
+        // After column (original column)
+        rowCells.push(
+          <td
+            key={`after-${cellIndex++}`}
+            style={{ backgroundColor, padding: "4px", border: "1px solid #dee2e6" }}
+          >
+            {cell.after}
           </td>,
         );
       } else {
@@ -388,30 +417,68 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
 
     return (
       <tr key={diffRow.rowNumber}>
-        <td style={{ backgroundColor: "#e9ecef", padding: "4px", border: "1px solid #dee2e6", fontWeight: "bold" }}>
-          Row {diffRow.rowNumber}
+        <td
+          style={{
+            backgroundColor: "#dee2e6",
+            padding: "4px",
+            border: "1px solid #dee2e6",
+            fontWeight: "bold",
+            textAlign: "center",
+          }}
+        >
+          {diffRow.rowNumber}
         </td>
         {rowCells}
       </tr>
     );
   });
 
+  // Render header row
+  const renderHeaderRow = () => {
+    const headerCells: React.JSX.Element[] = [];
+
+    // Row number column header
+    headerCells.push(
+      <th key="row-number-header">
+      </th>,
+    );
+
+    // Add headers from diffTable.headers
+    diffTable.headers.forEach((header, index) => {
+      headerCells.push(
+        <th
+          key={`header-${index}`}
+          style={{
+            backgroundColor: "#f8f9fa",
+            padding: "4px",
+            border: "1px solid #dee2e6",
+            fontWeight: "bold",
+            textAlign: "center",
+          }}
+        >
+          {header}
+        </th>,
+      );
+    });
+
+    return (
+      <tr>
+        {headerCells}
+      </tr>
+    );
+  };
+
   return (
     <div style={{ overflowX: "auto" }}>
       <table style={{ borderCollapse: "collapse", width: "100%", fontFamily: "monospace", fontSize: "14px" }}>
         <thead>
-          <tr>
-            <td style={{ backgroundColor: "#e9ecef", padding: "4px", border: "1px solid #dee2e6", fontWeight: "bold" }}>
-              Row
-            </td>
-            {headerCells}
-          </tr>
+          {renderHeaderRow()}
         </thead>
         <tbody>
           {diffTable.rows.length === 0
             ? (
               <tr>
-                <td colSpan={headerCells.length + 1} style={{ padding: "20px", textAlign: "center" }}>
+                <td colSpan={diffTable.headers.length + 1} style={{ padding: "20px", textAlign: "center" }}>
                   No differences found.
                 </td>
               </tr>

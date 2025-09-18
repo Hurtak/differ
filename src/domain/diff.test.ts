@@ -11,9 +11,13 @@ import {
   createDiffRows,
   detectChangedColumns,
   DiffConfig,
+  exportDiffTableToCsv,
+  extractCsvHeaders,
   generateCsvHeaders,
+  parseCsvLine,
   parseCsvToRows,
   parseTextToLines,
+  stripCsvFormattingQuotes,
 } from "../domain/diff.ts";
 
 describe("parseTextToLines", () => {
@@ -93,6 +97,7 @@ describe("createDiffLines", () => {
       mode: "text",
       hideUnchangedRows: false,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffLines = createDiffLines(beforeLines, afterLines, config);
 
@@ -112,6 +117,7 @@ describe("createDiffLines", () => {
       mode: "text",
       hideUnchangedRows: false,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffLines = createDiffLines(beforeLines, afterLines, config);
 
@@ -128,6 +134,7 @@ describe("createDiffLines", () => {
       mode: "text",
       hideUnchangedRows: false,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffLines = createDiffLines(beforeLines, afterLines, config);
 
@@ -144,6 +151,7 @@ describe("createDiffLines", () => {
       mode: "text",
       hideUnchangedRows: false,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffLines = createDiffLines(beforeLines, afterLines, config);
 
@@ -161,6 +169,7 @@ describe("createDiffLines", () => {
       mode: "text",
       hideUnchangedRows: true,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffLines = createDiffLines(beforeLines, afterLines, config);
 
@@ -260,6 +269,7 @@ describe("createDiffRows", () => {
       mode: "csv",
       hideUnchangedRows: false,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffRows = createDiffRows(beforeRows, afterRows, config);
 
@@ -275,6 +285,7 @@ describe("createDiffRows", () => {
       mode: "csv",
       hideUnchangedRows: false,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffRows = createDiffRows(beforeRows, afterRows, config);
 
@@ -290,6 +301,7 @@ describe("createDiffRows", () => {
       mode: "csv",
       hideUnchangedRows: true,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffRows = createDiffRows(beforeRows, afterRows, config);
 
@@ -338,6 +350,7 @@ describe("generateCsvHeaders", () => {
       mode: "csv",
       hideUnchangedRows: false,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const headers = generateCsvHeaders(3, changedColumns, config);
 
@@ -350,10 +363,11 @@ describe("generateCsvHeaders", () => {
       mode: "csv",
       hideUnchangedRows: false,
       beforeAfterColumn: true,
+      firstRowIsHeader: true,
     };
     const headers = generateCsvHeaders(3, changedColumns, config);
 
-    assertEquals(headers, ["Column 1", "Column 2", "Column 2 Before", "Column 3"]);
+    assertEquals(headers, ["Column 1", "Column 2 Before", "Column 2 After", "Column 3"]);
   });
 });
 
@@ -365,11 +379,12 @@ describe("createCsvDiffTable", () => {
       mode: "csv",
       hideUnchangedRows: false,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffTable = createCsvDiffTable(beforeText, afterText, config);
 
-    assertEquals(diffTable.headers, ["Column 1", "Column 2"]);
-    assertEquals(diffTable.rows.length, 2);
+    assertEquals(diffTable.headers, ["a", "b"]);
+    assertEquals(diffTable.rows.length, 1); // Only data row, header is extracted separately
     assertEquals(diffTable.rows[0].hasChanges, false);
   });
 
@@ -380,11 +395,37 @@ describe("createCsvDiffTable", () => {
       mode: "csv",
       hideUnchangedRows: false,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffTable = createCsvDiffTable(beforeText, afterText, config);
 
-    assertEquals(diffTable.rows[1].hasChanges, true);
-    assertEquals(diffTable.rows[1].cells[1].hasChange, true);
+    assertEquals(diffTable.rows[0].hasChanges, true); // Now rows[0] is the data row
+    assertEquals(diffTable.rows[0].cells[1].hasChange, true);
+  });
+
+  test("creates diff table with headers in before/after mode", () => {
+    const beforeText = "Name,Value\nold1,value2\nold3,value4";
+    const afterText = "Name,Value\nnew1,value2\nnew3,value4";
+    const config: DiffConfig = {
+      mode: "csv",
+      hideUnchangedRows: false,
+      beforeAfterColumn: true,
+      firstRowIsHeader: true,
+    };
+    const diffTable = createCsvDiffTable(beforeText, afterText, config);
+
+    // Should modify existing headers for columns with changes
+    assertEquals(diffTable.headers.length, 3); // Name Before, Name After, Value
+    assertEquals(diffTable.headers[0], "Name Before");
+    assertEquals(diffTable.headers[1], "Name After");
+    assertEquals(diffTable.headers[2], "Value");
+
+    // Data should be correctly structured (first row of CSV is treated as headers, not data)
+    assertEquals(diffTable.rows.length, 2); // Two data rows
+    assertEquals(diffTable.rows[0].cells[0].before, "old1");
+    assertEquals(diffTable.rows[0].cells[0].after, "new1");
+    assertEquals(diffTable.rows[0].cells[1].before, "value2");
+    assertEquals(diffTable.rows[0].cells[1].after, "value2");
   });
 });
 
@@ -396,6 +437,7 @@ describe("computeTextDiff", () => {
       mode: "text",
       hideUnchangedRows: false,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffLines = computeTextDiff(beforeText, afterText, config);
 
@@ -415,6 +457,7 @@ describe("computeTextDiff", () => {
       mode: "text",
       hideUnchangedRows: false,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffLines = computeTextDiff("", "", config);
 
@@ -430,6 +473,7 @@ describe("computeTextDiff", () => {
       mode: "text",
       hideUnchangedRows: false,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffLines = computeTextDiff(beforeText, afterText, config);
 
@@ -445,6 +489,7 @@ describe("computeTextDiff", () => {
       mode: "text",
       hideUnchangedRows: true,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffLines = computeTextDiff(beforeText, afterText, config);
 
@@ -462,15 +507,16 @@ describe("computeCsvDiff", () => {
       mode: "csv",
       hideUnchangedRows: false,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffTable = computeCsvDiff(beforeText, afterText, config);
 
-    assertEquals(diffTable.headers, ["Column 1", "Column 2"]);
-    assertEquals(diffTable.rows.length, 3); // Header + 2 data rows
-    assertEquals(diffTable.rows[1].hasChanges, true);
-    assertEquals(diffTable.rows[1].cells[1].hasChange, true);
-    assertEquals(diffTable.rows[1].cells[1].before, "25");
-    assertEquals(diffTable.rows[1].cells[1].after, "26");
+    assertEquals(diffTable.headers, ["name", "age"]);
+    assertEquals(diffTable.rows.length, 2); // 2 data rows (header extracted separately)
+    assertEquals(diffTable.rows[0].hasChanges, true); // Now rows[0] is the first data row
+    assertEquals(diffTable.rows[0].cells[1].hasChange, true);
+    assertEquals(diffTable.rows[0].cells[1].before, "25");
+    assertEquals(diffTable.rows[0].cells[1].after, "26");
   });
 
   test("hides unchanged rows when configured", () => {
@@ -480,11 +526,455 @@ describe("computeCsvDiff", () => {
       mode: "csv",
       hideUnchangedRows: true,
       beforeAfterColumn: false,
+      firstRowIsHeader: true,
     };
     const diffTable = computeCsvDiff(beforeText, afterText, config);
 
-    assertEquals(diffTable.rows.length, 1); // Only the changed row
+    assertEquals(diffTable.rows.length, 1); // Only the changed row (header extracted separately)
     assertEquals(diffTable.rows[0].rowNumber, 3);
     assertEquals(diffTable.rows[0].hasChanges, true);
+  });
+});
+
+describe("exportDiffTableToCsv", () => {
+  test("exports basic CSV with headers and data", () => {
+    const diffTable = {
+      headers: ["Name", "Age", "City"],
+      rows: [
+        {
+          rowNumber: 1,
+          hasChanges: false,
+          cells: [
+            { before: "John", after: "John", hasChange: false, wordChanges: [] },
+            { before: "25", after: "25", hasChange: false, wordChanges: [] },
+            { before: "NYC", after: "NYC", hasChange: false, wordChanges: [] },
+          ],
+        },
+        {
+          rowNumber: 2,
+          hasChanges: true,
+          cells: [
+            { before: "Jane", after: "Jane", hasChange: false, wordChanges: [] },
+            { before: "30", after: "31", hasChange: true, wordChanges: [] },
+            { before: "LA", after: "LA", hasChange: false, wordChanges: [] },
+          ],
+        },
+      ],
+    };
+    const config: DiffConfig = {
+      mode: "csv",
+      hideUnchangedRows: false,
+      beforeAfterColumn: false,
+      firstRowIsHeader: true,
+    };
+
+    const csv = exportDiffTableToCsv(diffTable, config);
+    const expected = "Name,Age,City\nJohn,25,NYC\nJane,31,LA";
+
+    assertEquals(csv, expected);
+  });
+
+  test("exports CSV with no headers", () => {
+    const diffTable = {
+      headers: [],
+      rows: [
+        {
+          rowNumber: 1,
+          hasChanges: false,
+          cells: [
+            { before: "value1", after: "value1", hasChange: false, wordChanges: [] },
+            { before: "value2", after: "value2", hasChange: false, wordChanges: [] },
+          ],
+        },
+      ],
+    };
+    const config: DiffConfig = {
+      mode: "csv",
+      hideUnchangedRows: false,
+      beforeAfterColumn: false,
+      firstRowIsHeader: true,
+    };
+
+    const csv = exportDiffTableToCsv(diffTable, config);
+    const expected = "value1,value2";
+
+    assertEquals(csv, expected);
+  });
+
+  test("exports CSV with special characters and quotes", () => {
+    const diffTable = {
+      headers: ["Description", "Value"],
+      rows: [
+        {
+          rowNumber: 1,
+          hasChanges: false,
+          cells: [
+            { before: 'Hello "World"', after: 'Hello "World"', hasChange: false, wordChanges: [] },
+            { before: "Value, with comma", after: "Value, with comma", hasChange: false, wordChanges: [] },
+          ],
+        },
+      ],
+    };
+    const config: DiffConfig = {
+      mode: "csv",
+      hideUnchangedRows: false,
+      beforeAfterColumn: false,
+      firstRowIsHeader: true,
+    };
+
+    const csv = exportDiffTableToCsv(diffTable, config);
+    const expected = 'Description,Value\nHello "World",Value, with comma';
+
+    assertEquals(csv, expected);
+  });
+
+  test("exports CSV with empty values", () => {
+    const diffTable = {
+      headers: ["A", "B", "C"],
+      rows: [
+        {
+          rowNumber: 1,
+          hasChanges: false,
+          cells: [
+            { before: "", after: "", hasChange: false, wordChanges: [] },
+            { before: "value", after: "", hasChange: true, wordChanges: [] },
+            { before: "", after: "new", hasChange: true, wordChanges: [] },
+          ],
+        },
+      ],
+    };
+    const config: DiffConfig = {
+      mode: "csv",
+      hideUnchangedRows: false,
+      beforeAfterColumn: false,
+      firstRowIsHeader: true,
+    };
+
+    const csv = exportDiffTableToCsv(diffTable, config);
+    const expected = "A,B,C\n,,new";
+
+    assertEquals(csv, expected);
+  });
+
+  test("exports CSV in before/after column mode", () => {
+    const diffTable = {
+      headers: ["Name", "Age Before", "Age After", "City"],
+      rows: [
+        {
+          rowNumber: 1,
+          hasChanges: true,
+          cells: [
+            { before: "John", after: "John", hasChange: false, wordChanges: [] },
+            { before: "25", after: "26", hasChange: true, wordChanges: [] },
+            { before: "NYC", after: "NYC", hasChange: false, wordChanges: [] },
+          ],
+        },
+      ],
+    };
+    const config: DiffConfig = {
+      mode: "csv",
+      hideUnchangedRows: false,
+      beforeAfterColumn: true,
+      firstRowIsHeader: true,
+    };
+
+    const csv = exportDiffTableToCsv(diffTable, config);
+    const expected = "Name,Age Before,Age After,City\nJohn,25,26,NYC";
+
+    assertEquals(csv, expected);
+  });
+
+  test("exports CSV with no rows", () => {
+    const diffTable = {
+      headers: ["Name", "Age"],
+      rows: [],
+    };
+    const config: DiffConfig = {
+      mode: "csv",
+      hideUnchangedRows: false,
+      beforeAfterColumn: false,
+      firstRowIsHeader: true,
+    };
+
+    const csv = exportDiffTableToCsv(diffTable, config);
+    const expected = "Name,Age";
+
+    assertEquals(csv, expected);
+  });
+
+  test("exports CSV with multiple rows and mixed changes", () => {
+    const diffTable = {
+      headers: ["ID", "Name", "Status"],
+      rows: [
+        {
+          rowNumber: 1,
+          hasChanges: false,
+          cells: [
+            { before: "1", after: "1", hasChange: false, wordChanges: [] },
+            { before: "Alice", after: "Alice", hasChange: false, wordChanges: [] },
+            { before: "active", after: "active", hasChange: false, wordChanges: [] },
+          ],
+        },
+        {
+          rowNumber: 2,
+          hasChanges: true,
+          cells: [
+            { before: "2", after: "2", hasChange: false, wordChanges: [] },
+            { before: "Bob", after: "Robert", hasChange: true, wordChanges: [] },
+            { before: "inactive", after: "active", hasChange: true, wordChanges: [] },
+          ],
+        },
+        {
+          rowNumber: 3,
+          hasChanges: false,
+          cells: [
+            { before: "3", after: "3", hasChange: false, wordChanges: [] },
+            { before: "Charlie", after: "Charlie", hasChange: false, wordChanges: [] },
+            { before: "active", after: "active", hasChange: false, wordChanges: [] },
+          ],
+        },
+      ],
+    };
+    const config: DiffConfig = {
+      mode: "csv",
+      hideUnchangedRows: false,
+      beforeAfterColumn: false,
+      firstRowIsHeader: true,
+    };
+
+    const csv = exportDiffTableToCsv(diffTable, config);
+    const expected = "ID,Name,Status\n1,Alice,active\n2,Robert,active\n3,Charlie,active";
+
+    assertEquals(csv, expected);
+  });
+
+  test("handles cells with only before values (deletions)", () => {
+    const diffTable = {
+      headers: ["Name", "Value"],
+      rows: [
+        {
+          rowNumber: 1,
+          hasChanges: true,
+          cells: [
+            { before: "Test", after: "", hasChange: true, wordChanges: [] },
+            { before: "123", after: "", hasChange: true, wordChanges: [] },
+          ],
+        },
+      ],
+    };
+    const config: DiffConfig = {
+      mode: "csv",
+      hideUnchangedRows: false,
+      beforeAfterColumn: false,
+      firstRowIsHeader: true,
+    };
+
+    const csv = exportDiffTableToCsv(diffTable, config);
+    const expected = "Name,Value\n,";
+
+    assertEquals(csv, expected);
+  });
+
+  test("handles cells with only after values (additions)", () => {
+    const diffTable = {
+      headers: ["Name", "Value"],
+      rows: [
+        {
+          rowNumber: 1,
+          hasChanges: true,
+          cells: [
+            { before: "", after: "New", hasChange: true, wordChanges: [] },
+            { before: "", after: "456", hasChange: true, wordChanges: [] },
+          ],
+        },
+      ],
+    };
+    const config: DiffConfig = {
+      mode: "csv",
+      hideUnchangedRows: false,
+      beforeAfterColumn: false,
+      firstRowIsHeader: true,
+    };
+
+    const csv = exportDiffTableToCsv(diffTable, config);
+    const expected = "Name,Value\nNew,456";
+
+    assertEquals(csv, expected);
+  });
+
+  test("exports CSV with no headers in before/after mode", () => {
+    const diffTable = {
+      headers: ["Column 1 Before", "Column 1 After", "Column 2"],
+      rows: [
+        {
+          rowNumber: 1,
+          hasChanges: true,
+          cells: [
+            { before: "old1", after: "new1", hasChange: true, wordChanges: [] },
+            { before: "value2", after: "value2", hasChange: false, wordChanges: [] },
+          ],
+        },
+      ],
+    };
+    const config: DiffConfig = {
+      mode: "csv",
+      hideUnchangedRows: false,
+      beforeAfterColumn: true,
+      firstRowIsHeader: true,
+    };
+
+    const csv = exportDiffTableToCsv(diffTable, config);
+    const expected = "Column 1 Before,Column 1 After,Column 2\nold1,new1,value2";
+
+    assertEquals(csv, expected);
+  });
+});
+
+describe("parseCsvLine", () => {
+  test("parses simple CSV line without quotes", () => {
+    const input = "a,b,c";
+    const expected = ["a", "b", "c"];
+    assertEquals(parseCsvLine(input), expected);
+  });
+
+  test("parses CSV line with quoted fields containing commas", () => {
+    const input = '"a,b",c,"d,e"';
+    const expected = ["a,b", "c", "d,e"];
+    assertEquals(parseCsvLine(input), expected);
+  });
+
+  test("parses CSV line with quoted fields containing quotes", () => {
+    const input = '"He said ""Hello""",world';
+    const expected = ['He said "Hello"', "world"];
+    assertEquals(parseCsvLine(input), expected);
+  });
+
+  test("parses CSV line with mixed quoted and unquoted fields", () => {
+    const input = 'name,"John,Doe",age,25';
+    const expected = ["name", "John,Doe", "age", "25"];
+    assertEquals(parseCsvLine(input), expected);
+  });
+
+  test("handles empty fields", () => {
+    const input = 'a,,"c"';
+    const expected = ["a", "", "c"];
+    assertEquals(parseCsvLine(input), expected);
+  });
+
+  test("handles single field", () => {
+    const input = '"single field"';
+    const expected = ["single field"];
+    assertEquals(parseCsvLine(input), expected);
+  });
+});
+
+describe("stripCsvFormattingQuotes", () => {
+  test("strips quotes from field without special characters", () => {
+    const input = '"hello"';
+    const expected = "hello";
+    assertEquals(stripCsvFormattingQuotes(input), expected);
+  });
+
+  test("keeps quotes when field contains comma", () => {
+    const input = '"hello,world"';
+    const expected = '"hello,world"';
+    assertEquals(stripCsvFormattingQuotes(input), expected);
+  });
+
+  test("keeps quotes when field contains newline", () => {
+    const input = '"hello\nworld"';
+    const expected = '"hello\nworld"';
+    assertEquals(stripCsvFormattingQuotes(input), expected);
+  });
+
+  test("keeps quotes when field contains quotes", () => {
+    const input = '"He said ""Hello"""';
+    const expected = '"He said ""Hello"""';
+    assertEquals(stripCsvFormattingQuotes(input), expected);
+  });
+
+  test("leaves unquoted field unchanged", () => {
+    const input = "hello";
+    const expected = "hello";
+    assertEquals(stripCsvFormattingQuotes(input), expected);
+  });
+
+  test("leaves partially quoted field unchanged", () => {
+    const input = '"hello';
+    const expected = '"hello';
+    assertEquals(stripCsvFormattingQuotes(input), expected);
+  });
+
+  test("strips quotes from numeric field", () => {
+    const input = '"12345"';
+    const expected = "12345";
+    assertEquals(stripCsvFormattingQuotes(input), expected);
+  });
+});
+
+describe("extractCsvHeaders", () => {
+  test("extracts and strips quotes from headers", () => {
+    const beforeRows = [['"Name"', '"Age"', '"City"']];
+    const afterRows = [['"Name"', '"Age"', '"City"']];
+    const expected = ["Name", "Age", "City"];
+    assertEquals(extractCsvHeaders(beforeRows, afterRows), expected);
+  });
+
+  test("handles mixed quoted and unquoted headers", () => {
+    const beforeRows: string[][] = [];
+    const afterRows = [["Name", '"Age,City"', "Country"]];
+    const expected = ["Name", '"Age,City"', "Country"];
+    assertEquals(extractCsvHeaders(beforeRows, afterRows), expected);
+  });
+
+  test("returns empty array when no rows", () => {
+    const beforeRows: string[][] = [];
+    const afterRows: string[][] = [];
+    const expected: string[] = [];
+    assertEquals(extractCsvHeaders(beforeRows, afterRows), expected);
+  });
+});
+
+describe("createDiffCells with quoted fields", () => {
+  test("strips formatting quotes from cells", () => {
+    const beforeRow = ["John", "25", "NYC"];
+    const afterRow = ["Jane", "26", "LA"];
+    const diffCells = createDiffCells(beforeRow, afterRow);
+
+    assertEquals(diffCells[0].before, "John");
+    assertEquals(diffCells[0].after, "Jane");
+    assertEquals(diffCells[1].before, "25");
+    assertEquals(diffCells[1].after, "26");
+    assertEquals(diffCells[2].before, "NYC");
+    assertEquals(diffCells[2].after, "LA");
+  });
+
+  test("preserves content quotes in cells", () => {
+    const beforeRow = ["John,Doe", 'He said "Hi"'];
+    const afterRow = ["Jane,Doe", 'She said "Hi"'];
+    const diffCells = createDiffCells(beforeRow, afterRow);
+
+    assertEquals(diffCells[0].before, "John,Doe");
+    assertEquals(diffCells[0].after, "Jane,Doe");
+    assertEquals(diffCells[1].before, 'He said "Hi"');
+    assertEquals(diffCells[1].after, 'She said "Hi"');
+  });
+});
+
+describe("parseCsvToRows with quoted fields", () => {
+  test("parses CSV with quoted fields containing commas", () => {
+    const input = '"Name,Full","Age"\n"John,Doe",25\n"Jane,Smith",30';
+    const expected = [
+      ["Name,Full", "Age"],
+      ["John,Doe", "25"],
+      ["Jane,Smith", "30"],
+    ];
+    assertEquals(parseCsvToRows(input), expected);
+  });
+
+  test("parses CSV with escaped quotes", () => {
+    const input = '"He said ""Hello""","She replied ""Hi"""';
+    const expected = [['He said "Hello"', 'She replied "Hi"']];
+    assertEquals(parseCsvToRows(input), expected);
   });
 });

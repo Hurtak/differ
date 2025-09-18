@@ -5,6 +5,7 @@ export type DiffConfig = {
   mode: "text" | "csv";
   hideUnchangedRows: boolean;
   beforeAfterColumn: boolean;
+  firstRowIsHeader: boolean;
 };
 
 export type Lines = string[];
@@ -100,7 +101,58 @@ export const createDiffLines = (
 
 // CSV diff pipeline
 export const parseCsvToRows = (text: string): CSVRow[] => {
-  return text.split("\n").map((line) => line.split(","));
+  return text.split("\n").map((line) => parseCsvLine(line));
+};
+
+// Parse a single CSV line, handling quoted fields properly
+export const parseCsvLine = (line: string): string[] => {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < line.length) {
+    const char = line[i];
+
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        // Escaped quote within quoted field - add single quote and skip next
+        current += '"';
+        i += 2;
+        continue;
+      } else {
+        // Toggle quote state (but don't add the quote to current)
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      // Field separator outside quotes
+      result.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+
+    i++;
+  }
+
+  // Add the last field
+  result.push(current);
+
+  return result;
+};
+
+// Strip quotes that were added for CSV formatting (not content)
+export const stripCsvFormattingQuotes = (field: string): string => {
+  // If field is wrapped in quotes and doesn't contain special CSV characters,
+  // the quotes are likely for formatting and should be removed
+  if (field.startsWith('"') && field.endsWith('"')) {
+    const inner = field.slice(1, -1);
+    // Check if inner content contains characters that would require quoting
+    if (!inner.includes(",") && !inner.includes("\n") && !inner.includes('"')) {
+      return inner;
+    }
+  }
+  return field;
 };
 
 export const computeCellWordChanges = (beforeCell: string, afterCell: string): WordChange[] => {
@@ -123,8 +175,8 @@ export const createDiffCells = (
     const wordChanges = hasChange ? computeCellWordChanges(beforeCell, afterCell) : [];
 
     diffCells.push({
-      before: beforeCell,
-      after: afterCell,
+      before: stripCsvFormattingQuotes(beforeCell),
+      after: stripCsvFormattingQuotes(afterCell),
       hasChange,
       wordChanges,
     });
@@ -134,6 +186,14 @@ export const createDiffCells = (
 };
 
 export const createDiffRows = (
+  beforeRows: CSVRow[],
+  afterRows: CSVRow[],
+  config: DiffConfig,
+): DiffRow[] => {
+  return createDiffRowsWithOffset(beforeRows, afterRows, config);
+};
+
+export const createDiffRowsWithOffset = (
   beforeRows: CSVRow[],
   afterRows: CSVRow[],
   config: DiffConfig,
@@ -176,6 +236,33 @@ export const detectChangedColumns = (diffRows: DiffRow[]): Set<number> => {
   return changedColumns;
 };
 
+export const extractCsvHeaders = (
+  beforeRows: CSVRow[],
+  afterRows: CSVRow[],
+): string[] => {
+  // Try to get headers from afterRows first, then beforeRows
+  const headerSource = afterRows.length > 0 ? afterRows[0] : beforeRows[0];
+  return headerSource ? headerSource.map(stripCsvFormattingQuotes) : [];
+};
+
+export const generateHeadersWithBeforeAfter = (
+  actualHeaders: string[],
+  changedColumns: Set<number>,
+): string[] => {
+  const headers: string[] = [];
+
+  for (let j = 0; j < actualHeaders.length; j++) {
+    if (changedColumns.has(j)) {
+      headers.push(`${actualHeaders[j]} Before`);
+      headers.push(`${actualHeaders[j]} After`);
+    } else {
+      headers.push(actualHeaders[j]);
+    }
+  }
+
+  return headers;
+};
+
 export const generateCsvHeaders = (
   maxCols: number,
   changedColumns: Set<number>,
@@ -185,8 +272,8 @@ export const generateCsvHeaders = (
 
   for (let j = 0; j < maxCols; j++) {
     if (config.beforeAfterColumn && changedColumns.has(j)) {
-      headers.push(`Column ${j + 1}`);
       headers.push(`Column ${j + 1} Before`);
+      headers.push(`Column ${j + 1} After`);
     } else {
       headers.push(`Column ${j + 1}`);
     }
@@ -202,15 +289,46 @@ export const createCsvDiffTable = (
 ): DiffTable => {
   const beforeRows = parseCsvToRows(beforeText);
   const afterRows = parseCsvToRows(afterText);
-  const diffRows = createDiffRows(beforeRows, afterRows, config);
 
-  const maxCols = Math.max(
-    ...beforeRows.map((row) => row.length),
-    ...afterRows.map((row) => row.length),
+  let dataBeforeRows = beforeRows;
+  let dataAfterRows = afterRows;
+  let headers: string[];
+  let actualHeaders: string[] = [];
+
+  if (config.firstRowIsHeader && beforeRows.length > 0 && afterRows.length > 0) {
+    // First row is header - extract headers and skip first row for data processing
+    actualHeaders = extractCsvHeaders(beforeRows, afterRows);
+
+    if (beforeRows.length > 1) {
+      dataBeforeRows = beforeRows.slice(1);
+    }
+
+    if (afterRows.length > 1) {
+      dataAfterRows = afterRows.slice(1);
+    }
+  } else {
+    // No header row - treat all rows as data
+    actualHeaders = [];
+  }
+
+  const diffRows = createDiffRowsWithOffset(dataBeforeRows, dataAfterRows, config);
+
+  const _maxCols = Math.max(
+    ...dataBeforeRows.map((row) => row.length),
+    ...dataAfterRows.map((row) => row.length),
   );
 
   const changedColumns = config.beforeAfterColumn ? detectChangedColumns(diffRows) : new Set<number>();
-  const headers = generateCsvHeaders(maxCols, changedColumns, config);
+
+  if (!config.firstRowIsHeader) {
+    // First row is NOT header - generate generic headers based on column count
+    headers = config.beforeAfterColumn
+      ? generateCsvHeaders(_maxCols, changedColumns, config)
+      : generateCsvHeaders(_maxCols, new Set<number>(), config);
+  } else {
+    // First row IS header - use actual headers from the data
+    headers = config.beforeAfterColumn ? generateHeadersWithBeforeAfter(actualHeaders, changedColumns) : actualHeaders;
+  }
 
   return {
     headers,
@@ -235,4 +353,44 @@ export const computeCsvDiff = (
   config: DiffConfig,
 ): DiffTable => {
   return createCsvDiffTable(beforeText, afterText, config);
+};
+
+// Helper function to escape CSV fields (no quoting)
+const escapeCsvField = (field: string): string => {
+  // Return the field as-is without any quoting
+  return field;
+};
+
+// Export functions for downloading
+export const exportDiffTableToCsv = (diffTable: DiffTable, config: DiffConfig): string => {
+  const lines: string[] = [];
+
+  // Add headers
+  if (diffTable.headers.length > 0) {
+    lines.push(diffTable.headers.map(escapeCsvField).join(","));
+  }
+
+  // Determine which columns have changes for before/after mode
+  const changedColumns = config.beforeAfterColumn ? detectChangedColumns(diffTable.rows) : new Set<number>();
+
+  // Add data rows
+  diffTable.rows.forEach((row) => {
+    const rowData: string[] = [];
+
+    // Add cell data (no row number column as requested)
+    row.cells.forEach((cell, cellIndex) => {
+      if (config.beforeAfterColumn && changedColumns.has(cellIndex)) {
+        // In before/after mode for changed columns, show both before and after
+        rowData.push(escapeCsvField(cell.before)); // Before value
+        rowData.push(escapeCsvField(cell.after)); // After value
+      } else {
+        // Normal mode or unchanged column - show the after value
+        rowData.push(escapeCsvField(cell.after));
+      }
+    });
+
+    lines.push(rowData.join(","));
+  });
+
+  return lines.join("\n");
 };

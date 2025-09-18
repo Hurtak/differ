@@ -7,8 +7,7 @@ alwaysApply: true
 
 ## Tooling
 
-- Always use `deno` for running tasks or installing dependencies, see `deno.json`
-- Run check script before completing tasks (`deno task check`)
+- Use `deno` instead of `npm`, see `deno.json`
 
 ## Key Commands
 
@@ -22,3 +21,5 @@ alwaysApply: true
 
 - Never use `any` or `@ts-ignore` in TypeScript files
 - Prefer functional programming patterns where applicable
+- Before finishing any task run `deno task check`
+- When creating TypeScript debug files, you are only allowed to create file called `debug.ts`, when removing that file use exactly `rm debug.ts` command
