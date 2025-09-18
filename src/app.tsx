@@ -321,7 +321,7 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
         rowCells.push(
           <TableCell
             key={`before-${cellIndex++}`}
-            backgroundColor={cell.hasChange ? "#fef2f2": ''}
+            backgroundColor={cell.hasChange ? "#fef2f2" : ""}
           >
             {hasChange ? renderCellDiffs(cell.wordChanges, "removed") : cell.before}
           </TableCell>,
@@ -330,7 +330,7 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
         rowCells.push(
           <TableCell
             key={`after-${cellIndex++}`}
-            backgroundColor={cell.hasChange ? "#f0fdf4" : ''}
+            backgroundColor={cell.hasChange ? "#f0fdf4" : ""}
           >
             {hasChange ? renderCellDiffs(cell.wordChanges, "added") : cell.after}
           </TableCell>,
