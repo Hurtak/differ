@@ -10,6 +10,15 @@ import {
   exportDiffTableToCsv,
   WordChange,
 } from "./domain/diff.ts";
+import {
+  ActionButton,
+  CheckboxLabel,
+  ModeButton,
+  StyledFieldset,
+  TableCell,
+  TableHeader,
+  TextArea,
+} from "./components.tsx";
 
 import "./app.css";
 
@@ -77,43 +86,23 @@ export const App = () => {
       <div style={{ display: "flex", gap: "20px", marginBottom: "20px" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3>Before</h3>
-          <textarea
+          <TextArea
             value={beforeText}
             onChange={(e) => setBeforeText(e.target.value)}
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, setBeforeText)}
-            placeholder="Paste text here or drag and drop a file..."
-            style={{
-              boxSizing: "border-box",
-              width: "100%",
-              height: "300px",
-              padding: "10px",
-              border: "2px dashed #ccc",
-              borderRadius: "5px",
-              fontFamily: "monospace",
-              resize: "vertical",
-            }}
+            placeholder="Paste text here or drag and drop a text or CSV file..."
           />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3>After</h3>
-          <textarea
+          <TextArea
             value={afterText}
             onChange={(e) => setAfterText(e.target.value)}
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, setAfterText)}
-            placeholder="Paste text here or drag and drop a file..."
-            style={{
-              boxSizing: "border-box",
-              width: "100%",
-              height: "300px",
-              padding: "10px",
-              border: "2px dashed #ccc",
-              borderRadius: "5px",
-              fontFamily: "monospace",
-              resize: "vertical",
-            }}
+            placeholder="Paste text here or drag and drop a text or CSV file..."
           />
         </div>
       </div>
@@ -122,86 +111,64 @@ export const App = () => {
       {(beforeText && afterText) && (
         <div>
           {/* Mode Tabs */}
-          <div style={{ marginBottom: "20px" }}>
-            <button
-              type="button"
-              onClick={() => setConfig({ ...config, mode: "text" })}
-              style={{
-                padding: "10px 20px",
-                marginRight: "10px",
-                backgroundColor: config.mode === "text" ? "#007bff" : "#f8f9fa",
-                color: config.mode === "text" ? "white" : "black",
-                border: "1px solid #dee2e6",
-                borderRadius: "5px",
-                cursor: "pointer",
-              }}
-            >
-              Text
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfig({ ...config, mode: "csv" })}
-              style={{
-                padding: "10px 20px",
-                marginRight: "10px",
-                backgroundColor: config.mode === "csv" ? "#007bff" : "#f8f9fa",
-                color: config.mode === "csv" ? "white" : "black",
-                border: "1px solid #dee2e6",
-                borderRadius: "5px",
-                cursor: "pointer",
-              }}
-            >
-              CSV
-            </button>
-            {config.mode === "csv" && (
-              <button
-                type="button"
-                onClick={handleDownloadCsv}
-                style={{
-                  padding: "10px 20px",
-                  backgroundColor: "#28a745",
-                  color: "white",
-                  border: "1px solid #28a745",
-                  borderRadius: "5px",
-                  cursor: "pointer",
-                }}
+          <StyledFieldset
+            legend="Mode"
+            legendStyle={{
+              fontSize: "16px",
+              fontWeight: "normal",
+            }}
+          >
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <ModeButton
+                isActive={config.mode === "text"}
+                onClick={() => setConfig({ ...config, mode: "text" })}
               >
-                Download CSV
-              </button>
-            )}
-          </div>
+                Text
+              </ModeButton>
+              <ModeButton
+                isActive={config.mode === "csv"}
+                onClick={() => setConfig({ ...config, mode: "csv" })}
+              >
+                CSV
+              </ModeButton>
+            </div>
+          </StyledFieldset>
 
           {/* Configuration */}
-          <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
-            <label>
-              <input
-                type="checkbox"
+          <StyledFieldset legend="Configuration">
+            <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center" }}>
+              <CheckboxLabel
                 checked={config.hideUnchangedRows}
                 onChange={(e) => setConfig({ ...config, hideUnchangedRows: e.target.checked })}
-              />
-              Hide unchanged rows
-            </label>
-            {config.mode === "csv" && (
-              <>
-                <label>
-                  <input
-                    type="checkbox"
+              >
+                Hide unchanged rows
+              </CheckboxLabel>
+
+              {config.mode === "csv" && (
+                <>
+                  <CheckboxLabel
                     checked={config.firstRowIsHeader}
                     onChange={(e) => setConfig({ ...config, firstRowIsHeader: e.target.checked })}
-                  />
-                  First row is header
-                </label>
-                <label>
-                  <input
-                    type="checkbox"
+                  >
+                    First row is header
+                  </CheckboxLabel>
+                  <CheckboxLabel
                     checked={config.beforeAfterColumn}
                     onChange={(e) => setConfig({ ...config, beforeAfterColumn: e.target.checked })}
-                  />
-                  Before/After Column
-                </label>
-              </>
-            )}
-          </div>
+                  >
+                    Before/After Column
+                  </CheckboxLabel>
+                  <ActionButton
+                    onClick={handleDownloadCsv}
+                    variant="success"
+                    size="small"
+                  >
+                    Download CSV
+                  </ActionButton>
+                </>
+              )}
+            </div>
+          </StyledFieldset>
 
           {/* Diff Output */}
           <div
@@ -352,21 +319,21 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
 
         // Before column (old values - highlight removed parts in red)
         rowCells.push(
-          <td
+          <TableCell
             key={`before-${cellIndex++}`}
-            style={{ backgroundColor: "#fef2f2", padding: "4px", border: "1px solid #dee2e6" }}
+            backgroundColor={cell.hasChange ? "#fef2f2": ''}
           >
             {hasChange ? renderCellDiffs(cell.wordChanges, "removed") : cell.before}
-          </td>,
+          </TableCell>,
         );
         // After column (new values - highlight added parts in green)
         rowCells.push(
-          <td
+          <TableCell
             key={`after-${cellIndex++}`}
-            style={{ backgroundColor: "#f0fdf4", padding: "4px", border: "1px solid #dee2e6" }}
+            backgroundColor={cell.hasChange ? "#f0fdf4" : ''}
           >
             {hasChange ? renderCellDiffs(cell.wordChanges, "added") : cell.after}
-          </td>,
+          </TableCell>,
         );
       } else {
         // Normal mode - single column
@@ -405,29 +372,31 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
         }
 
         rowCells.push(
-          <td
+          <TableCell
             key={cellIndex++}
-            style={{ backgroundColor, padding: "4px", border: "1px solid #dee2e6" }}
+            backgroundColor={backgroundColor}
+            style={{
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
           >
             {cellContent}
-          </td>,
+          </TableCell>,
         );
       }
     }
 
     return (
       <tr key={diffRow.rowNumber}>
-        <td
+        <TableCell
+          backgroundColor="#dee2e6"
           style={{
-            backgroundColor: "#dee2e6",
-            padding: "4px",
-            border: "1px solid #dee2e6",
             fontWeight: "bold",
             textAlign: "center",
           }}
         >
           {diffRow.rowNumber}
-        </td>
+        </TableCell>
         {rowCells}
       </tr>
     );
@@ -439,25 +408,16 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
 
     // Row number column header
     headerCells.push(
-      <th key="row-number-header">
-      </th>,
+      <TableHeader key="row-number-header">
+      </TableHeader>,
     );
 
     // Add headers from diffTable.headers
     diffTable.headers.forEach((header, index) => {
       headerCells.push(
-        <th
-          key={`header-${index}`}
-          style={{
-            backgroundColor: "#f8f9fa",
-            padding: "4px",
-            border: "1px solid #dee2e6",
-            fontWeight: "bold",
-            textAlign: "center",
-          }}
-        >
+        <TableHeader key={`header-${index}`}>
           {header}
-        </th>,
+        </TableHeader>,
       );
     });
 
@@ -478,9 +438,17 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
           {diffTable.rows.length === 0
             ? (
               <tr>
-                <td colSpan={diffTable.headers.length + 1} style={{ padding: "20px", textAlign: "center" }}>
+                <TableCell
+                  colSpan={diffTable.headers.length + 1}
+                  style={{
+                    padding: "20px",
+                    textAlign: "center",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
                   No differences found.
-                </td>
+                </TableCell>
               </tr>
             )
             : renderedRows}
