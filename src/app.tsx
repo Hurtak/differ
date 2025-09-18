@@ -1,13 +1,16 @@
 import React, { useCallback, useState } from "react";
-import * as diff from "diff";
+import {
+  computeCsvDiff,
+  computeTextDiff,
+  detectChangedColumns,
+  DiffConfig,
+  DiffLine,
+  DiffRow,
+  DiffTable,
+  WordChange,
+} from "./domain/diff.ts";
 
 import "./app.css";
-
-type DiffConfig = {
-  mode: "text" | "csv";
-  hideUnchangedRows: boolean;
-  beforeAfterColumn: boolean;
-};
 
 export const App = () => {
   const [beforeText, setBeforeText] = useState("");
@@ -38,9 +41,11 @@ export const App = () => {
 
   const renderDiff = () => {
     if (config.mode === "text") {
-      return <TextDiff before={beforeText} after={afterText} config={config} />;
+      const diffLines = computeTextDiff(beforeText, afterText, config);
+      return <TextDiff diffLines={diffLines} />;
     } else {
-      return <CsvDiff before={beforeText} after={afterText} config={config} />;
+      const diffTable = computeCsvDiff(beforeText, afterText, config);
+      return <CsvDiff diffTable={diffTable} config={config} />;
     }
   };
 
@@ -172,60 +177,43 @@ export const App = () => {
 };
 
 // Text Diff Component
-const TextDiff = ({ before, after, config }: { before: string; after: string; config: DiffConfig }) => {
-  const beforeLines = before.split("\n");
-  const afterLines = after.split("\n");
-  const maxLines = Math.max(beforeLines.length, afterLines.length);
-
-  const diffLines = Array.from({ length: maxLines }, (_, i) => {
-    const beforeLine = beforeLines[i] || "";
-    const afterLine = afterLines[i] || "";
-
-    if (beforeLine === afterLine) {
-      return !config.hideUnchangedRows
-        ? (
-          <div key={i} style={{ backgroundColor: "#f8f9fa", padding: "2px 0" }}>
-            <span style={{ color: "#6c757d" }}>{i + 1}</span>: {beforeLine || " "}
-          </div>
-        )
-        : null;
+const TextDiff = ({ diffLines }: { diffLines: DiffLine[] }) => {
+  const renderedLines = diffLines.map((diffLine) => {
+    if (diffLine.type === "unchanged") {
+      return (
+        <div key={diffLine.lineNumber} style={{ backgroundColor: "#f8f9fa", padding: "2px 0" }}>
+          <span style={{ color: "#6c757d" }}>{diffLine.lineNumber}</span>: {diffLine.content || " "}
+        </div>
+      );
     } else {
-      // Lines are different - show both with word-level inline highlighting
-      const wordDiffs = diff.diffWords(beforeLine, afterLine);
+      // Added or removed line with word-level highlighting
+      const backgroundColor = diffLine.type === "added" ? "#d4edda" : "#f8d7da";
+      const signColor = diffLine.type === "added" ? "#155724" : "#721c24";
+      const sign = diffLine.type === "added" ? "+" : "-";
+      const lineType = diffLine.type === "added" ? "added" : "removed";
 
-      return [
-        beforeLine
-          ? (
-            <div key={`before-${i}`} style={{ backgroundColor: "#f8d7da", padding: "2px 0" }}>
-              <span style={{ color: "#721c24" }}>-</span>
-              <span style={{ color: "#6c757d" }}>{i + 1}</span>: {renderWordDiffs(wordDiffs, "removed")}
-            </div>
-          )
-          : null,
-        afterLine
-          ? (
-            <div key={`after-${i}`} style={{ backgroundColor: "#d4edda", padding: "2px 0" }}>
-              <span style={{ color: "#155724" }}>+</span>
-              <span style={{ color: "#6c757d" }}>{i + 1}</span>: {renderWordDiffs(wordDiffs, "added")}
-            </div>
-          )
-          : null,
-      ].filter(Boolean);
+      return (
+        <div key={`${diffLine.type}-${diffLine.lineNumber}`} style={{ backgroundColor, padding: "2px 0" }}>
+          <span style={{ color: signColor }}>{sign}</span>
+          <span style={{ color: "#6c757d" }}>{diffLine.lineNumber}</span>:{" "}
+          {renderWordDiffs(diffLine.wordChanges || [], lineType)}
+        </div>
+      );
     }
-  }).flat().filter(Boolean);
+  });
 
   return (
     <div style={{ fontFamily: "monospace", fontSize: "14px" }}>
-      {diffLines.length === 0 ? <p>No differences found.</p> : diffLines}
+      {renderedLines.length === 0 ? <p>No differences found.</p> : renderedLines}
     </div>
   );
 };
 
 // Helper function to render word-level diffs
-const renderWordDiffs = (wordDiffs: diff.Change[], lineType: "added" | "removed") => {
+const renderWordDiffs = (wordChanges: WordChange[], lineType: "added" | "removed") => {
   return (
     <span>
-      {wordDiffs.map((change, index) => {
+      {wordChanges.map((change, index) => {
         if (!change.added && !change.removed) {
           // Common text - show in both lines
           return <span key={index}>{change.value}</span>;
@@ -263,15 +251,10 @@ const renderWordDiffs = (wordDiffs: diff.Change[], lineType: "added" | "removed"
 };
 
 // Helper function to render cell-level diffs (similar to word diffs but for cell content)
-const renderCellDiffs = (beforeCell: string, afterCell: string) => {
-  // Handle empty strings
-  const before = beforeCell || "";
-  const after = afterCell || "";
-  const cellDiffs = diff.diffWords(before, after);
-
+const renderCellDiffs = (wordChanges: WordChange[]) => {
   return (
     <span>
-      {cellDiffs.map((change, index) => {
+      {wordChanges.map((change, index) => {
         if (!change.added && !change.removed) {
           // Common text
           return <span key={index}>{change.value}</span>;
@@ -308,56 +291,30 @@ const renderCellDiffs = (beforeCell: string, afterCell: string) => {
 };
 
 // CSV Diff Component
-const CsvDiff = ({ before, after, config }: { before: string; after: string; config: DiffConfig }) => {
-  const parseCSV = (text: string): string[][] => {
-    return text.split("\n").map((line) => line.split(","));
-  };
+const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConfig }) => {
+  const changedColumns = config.beforeAfterColumn ? detectChangedColumns(diffTable.rows) : new Set<number>();
 
-  const beforeRows = parseCSV(before);
-  const afterRows = parseCSV(after);
-
-  const maxRows = Math.max(beforeRows.length, afterRows.length);
-  const maxCols = Math.max(
-    ...beforeRows.map((row) => row.length),
-    ...afterRows.map((row) => row.length),
-  );
-
-  // Detect which columns have changes
-  const changedColumns = new Set<number>();
-  if (config.beforeAfterColumn) {
-    for (let col = 0; col < maxCols; col++) {
-      for (let row = 0; row < maxRows; row++) {
-        const beforeCell = beforeRows[row]?.[col] || "";
-        const afterCell = afterRows[row]?.[col] || "";
-        if (beforeCell !== afterCell) {
-          changedColumns.add(col);
-          break; // No need to check more rows for this column
-        }
-      }
-    }
+  // Create header row
+  const headerCells: React.JSX.Element[] = [];
+  for (let j = 0; j < diffTable.headers.length; j++) {
+    const headerText = diffTable.headers[j];
+    headerCells.push(
+      <td
+        key={`header-${j}`}
+        style={{ backgroundColor: "#e9ecef", padding: "4px", border: "1px solid #dee2e6", fontWeight: "bold" }}
+      >
+        {headerText}
+      </td>,
+    );
   }
 
-  const diffRows = Array.from({ length: maxRows }, (_, i) => {
-    const beforeRow = beforeRows[i];
-    const afterRow = afterRows[i];
-
-    if (!beforeRow && !afterRow) return null;
-
-    const beforeCells = beforeRow || [];
-    const afterCells = afterRow || [];
-    const maxCells = Math.max(beforeCells.length, afterCells.length);
-
+  const renderedRows = diffTable.rows.map((diffRow: DiffRow) => {
     const rowCells: React.JSX.Element[] = [];
-    let rowHasChanges = false;
+    let cellIndex = 0;
 
-    for (let j = 0; j < maxCells; j++) {
-      const beforeCell = beforeCells[j] || "";
-      const afterCell = afterCells[j] || "";
-      const hasChange = beforeCell !== afterCell;
-
-      if (hasChange) {
-        rowHasChanges = true;
-      }
+    for (let j = 0; j < diffRow.cells.length; j++) {
+      const cell = diffRow.cells[j];
+      const hasChange = cell.hasChange;
 
       if (config.beforeAfterColumn && changedColumns.has(j)) {
         // Before/After Column mode - add two columns for changed columns
@@ -366,20 +323,20 @@ const CsvDiff = ({ before, after, config }: { before: string; after: string; con
         // After column (original column)
         rowCells.push(
           <td
-            key={`after-${j}`}
+            key={`after-${cellIndex++}`}
             style={{ backgroundColor, padding: "4px", border: "1px solid #dee2e6" }}
           >
-            {afterCell}
+            {cell.after}
           </td>,
         );
 
         // Before column (new column)
         rowCells.push(
           <td
-            key={`before-${j}`}
+            key={`before-${cellIndex++}`}
             style={{ backgroundColor, padding: "4px", border: "1px solid #dee2e6" }}
           >
-            {beforeCell}
+            {cell.before}
           </td>,
         );
       } else {
@@ -389,38 +346,38 @@ const CsvDiff = ({ before, after, config }: { before: string; after: string; con
 
         if (!hasChange) {
           backgroundColor = "#f8f9fa";
-          cellContent = <span>{beforeCell}</span>;
+          cellContent = <span>{cell.before}</span>;
         } else {
           // Determine background color based on what changed
-          backgroundColor = !beforeCell && afterCell
+          backgroundColor = !cell.before && cell.after
             ? "#d4edda" // Only added value
-            : beforeCell && !afterCell
+            : cell.before && !cell.after
             ? "#f8d7da" // Only removed value
             : "#fff3cd"; // default for both values present
 
-          if (!beforeCell && afterCell) {
+          if (!cell.before && cell.after) {
             // Only added value - show in green
             cellContent = (
               <span style={{ color: "#155724", fontWeight: "bold" }}>
-                {afterCell}
+                {cell.after}
               </span>
             );
-          } else if (beforeCell && !afterCell) {
+          } else if (cell.before && !cell.after) {
             // Only removed value - show in red with strikethrough
             cellContent = (
               <span style={{ color: "#721c24", textDecoration: "line-through" }}>
-                {beforeCell}
+                {cell.before}
               </span>
             );
           } else {
             // Both values present - show inline diff
-            cellContent = renderCellDiffs(beforeCell, afterCell);
+            cellContent = renderCellDiffs(cell.wordChanges);
           }
         }
 
         rowCells.push(
           <td
-            key={j}
+            key={cellIndex++}
             style={{ backgroundColor, padding: "4px", border: "1px solid #dee2e6" }}
           >
             {cellContent}
@@ -429,51 +386,15 @@ const CsvDiff = ({ before, after, config }: { before: string; after: string; con
       }
     }
 
-    return (!config.hideUnchangedRows || rowHasChanges)
-      ? (
-        <tr key={i}>
-          <td style={{ backgroundColor: "#e9ecef", padding: "4px", border: "1px solid #dee2e6", fontWeight: "bold" }}>
-            Row {i + 1}
-          </td>
-          {rowCells}
-        </tr>
-      )
-      : null;
-  }).filter(Boolean);
-
-  // Create header row
-  const headerCells: React.JSX.Element[] = [];
-  for (let j = 0; j < maxCols; j++) {
-    if (config.beforeAfterColumn && changedColumns.has(j)) {
-      // Add two headers for changed columns
-      headerCells.push(
-        <td
-          key={`header-after-${j}`}
-          style={{ backgroundColor: "#e9ecef", padding: "4px", border: "1px solid #dee2e6", fontWeight: "bold" }}
-        >
-          Column {j + 1}
-        </td>,
-      );
-      headerCells.push(
-        <td
-          key={`header-before-${j}`}
-          style={{ backgroundColor: "#e9ecef", padding: "4px", border: "1px solid #dee2e6", fontWeight: "bold" }}
-        >
-          Column {j + 1} Before
-        </td>,
-      );
-    } else {
-      // Single header for unchanged columns
-      headerCells.push(
-        <td
-          key={`header-${j}`}
-          style={{ backgroundColor: "#e9ecef", padding: "4px", border: "1px solid #dee2e6", fontWeight: "bold" }}
-        >
-          Column {j + 1}
-        </td>,
-      );
-    }
-  }
+    return (
+      <tr key={diffRow.rowNumber}>
+        <td style={{ backgroundColor: "#e9ecef", padding: "4px", border: "1px solid #dee2e6", fontWeight: "bold" }}>
+          Row {diffRow.rowNumber}
+        </td>
+        {rowCells}
+      </tr>
+    );
+  });
 
   return (
     <div style={{ overflowX: "auto" }}>
@@ -487,7 +408,7 @@ const CsvDiff = ({ before, after, config }: { before: string; after: string; con
           </tr>
         </thead>
         <tbody>
-          {diffRows.length === 0
+          {diffTable.rows.length === 0
             ? (
               <tr>
                 <td colSpan={headerCells.length + 1} style={{ padding: "20px", textAlign: "center" }}>
@@ -495,7 +416,7 @@ const CsvDiff = ({ before, after, config }: { before: string; after: string; con
                 </td>
               </tr>
             )
-            : diffRows}
+            : renderedRows}
         </tbody>
       </table>
     </div>
