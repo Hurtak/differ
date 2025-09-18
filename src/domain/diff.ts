@@ -158,7 +158,7 @@ export const stripCsvFormattingQuotes = (field: string): string => {
 export const computeCellWordChanges = (beforeCell: string, afterCell: string): WordChange[] => {
   const before = beforeCell || "";
   const after = afterCell || "";
-  return diff.diffWords(before, after);
+  return diff.diffWords(before, after, { oneChangePerToken: false, ignoreCase: true });
 };
 
 export const createDiffCells = (
@@ -197,6 +197,7 @@ export const createDiffRowsWithOffset = (
   beforeRows: CSVRow[],
   afterRows: CSVRow[],
   config: DiffConfig,
+  rowOffset: number = 0,
 ): DiffRow[] => {
   const maxRows = Math.max(beforeRows.length, afterRows.length);
   const diffRows: DiffRow[] = [];
@@ -212,7 +213,7 @@ export const createDiffRowsWithOffset = (
 
     if (!config.hideUnchangedRows || hasChanges) {
       diffRows.push({
-        rowNumber: i + 1,
+        rowNumber: i + 1 + rowOffset,
         cells,
         hasChanges,
       });
@@ -311,7 +312,7 @@ export const createCsvDiffTable = (
     actualHeaders = [];
   }
 
-  const diffRows = createDiffRowsWithOffset(dataBeforeRows, dataAfterRows, config);
+  const diffRows = createDiffRowsWithOffset(dataBeforeRows, dataAfterRows, config, config.firstRowIsHeader ? 1 : 0);
 
   const _maxCols = Math.max(
     ...dataBeforeRows.map((row) => row.length),

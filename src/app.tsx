@@ -295,14 +295,14 @@ const renderWordDiffs = (wordChanges: WordChange[], lineType: "added" | "removed
 };
 
 // Helper function to render cell-level diffs (similar to word diffs but for cell content)
-const renderCellDiffs = (wordChanges: WordChange[]) => {
+const renderCellDiffs = (wordChanges: WordChange[], showType?: "added" | "removed" | "all") => {
   return (
     <span>
       {wordChanges.map((change, index) => {
         if (!change.added && !change.removed) {
           // Common text
           return <span key={index}>{change.value}</span>;
-        } else if (change.added) {
+        } else if (change.added && (showType === "added" || showType === "all" || !showType)) {
           // Added text - highlight with green
           return (
             <span
@@ -312,7 +312,7 @@ const renderCellDiffs = (wordChanges: WordChange[]) => {
               {change.value}
             </span>
           );
-        } else if (change.removed) {
+        } else if (change.removed && (showType === "removed" || showType === "all" || !showType)) {
           // Removed text - highlight with red
           return (
             <span
@@ -348,24 +348,24 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
 
       if (config.beforeAfterColumn && changedColumns.has(j)) {
         // Before/After Column mode - add two columns for changed columns
-        const backgroundColor = hasChange ? "#fff3cd" : "#f8f9fa";
+        const _backgroundColor = hasChange ? "#fff3cd" : "#f8f9fa";
 
-        // Before column (new column)
+        // Before column (old values - highlight removed parts in red)
         rowCells.push(
           <td
             key={`before-${cellIndex++}`}
-            style={{ backgroundColor, padding: "4px", border: "1px solid #dee2e6" }}
+            style={{ backgroundColor: "#fef2f2", padding: "4px", border: "1px solid #dee2e6" }}
           >
-            {cell.before}
+            {hasChange ? renderCellDiffs(cell.wordChanges, "removed") : cell.before}
           </td>,
         );
-        // After column (original column)
+        // After column (new values - highlight added parts in green)
         rowCells.push(
           <td
             key={`after-${cellIndex++}`}
-            style={{ backgroundColor, padding: "4px", border: "1px solid #dee2e6" }}
+            style={{ backgroundColor: "#f0fdf4", padding: "4px", border: "1px solid #dee2e6" }}
           >
-            {cell.after}
+            {hasChange ? renderCellDiffs(cell.wordChanges, "added") : cell.after}
           </td>,
         );
       } else {
