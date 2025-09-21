@@ -3,9 +3,9 @@
 - Differ is a tool for comparing two text or CSV files and highlighting the differences.
 - See it live at https://hurtak.github.io/differ/
 
-## Screenshot
+## Preview
 
-![Differ Video](./resources/differ.gif)
+<img src="./resources/differ.gif" alt="Differ Preview" width="1466" height="1280" />
 
 ## Development
 
