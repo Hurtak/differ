@@ -5,7 +5,7 @@
 
 ## Screenshot
 
-![Differ](./differ.png)
+![Differ Video](./resources/differ.mov)
 
 ## Development
 
