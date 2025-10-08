@@ -192,7 +192,7 @@ const TextDiff = ({ diffLines }: { diffLines: DiffLine[] }) => {
   const renderedLines = diffLines.map((diffLine) => {
     if (diffLine.type === "unchanged") {
       return (
-        <div key={diffLine.lineNumber} style={{ backgroundColor: "#f8f9fa", padding: "2px 0" }}>
+        <div key={diffLine.lineNumber} style={{ backgroundColor: "#f8f9fa", padding: "2px 0", whiteSpace: "pre" }}>
           <span style={{ color: "#6c757d" }}>{diffLine.lineNumber}</span>: {diffLine.content || " "}
         </div>
       );
@@ -203,7 +203,10 @@ const TextDiff = ({ diffLines }: { diffLines: DiffLine[] }) => {
       const sign = diffLine.type === "added" ? "+" : "-";
 
       return (
-        <div key={`${diffLine.type}-${diffLine.lineNumber}`} style={{ backgroundColor, padding: "2px 0" }}>
+        <div
+          key={`${diffLine.type}-${diffLine.lineNumber}`}
+          style={{ backgroundColor, padding: "2px 0", whiteSpace: "pre" }}
+        >
           <span style={{ color: signColor }}>{sign}</span>
           <span style={{ color: "#6c757d" }}>{diffLine.lineNumber}</span>:{" "}
           {renderWordDiffs(diffLine.wordChanges || [], diffLine.type)}
@@ -222,7 +225,7 @@ const TextDiff = ({ diffLines }: { diffLines: DiffLine[] }) => {
 // Helper function to render word-level diffs
 const renderWordDiffs = (wordChanges: WordChange[], lineType: "added" | "removed") => {
   return (
-    <span>
+    <span style={{ whiteSpace: "pre" }}>
       {wordChanges.map((change, index) => {
         if (!change.added && !change.removed) {
           // Common text - show in both lines
@@ -263,7 +266,7 @@ const renderWordDiffs = (wordChanges: WordChange[], lineType: "added" | "removed
 // Helper function to render cell-level diffs (similar to word diffs but for cell content)
 const renderCellDiffs = (wordChanges: WordChange[], showType?: "added" | "removed" | "all") => {
   return (
-    <span>
+    <span style={{ whiteSpace: "pre" }}>
       {wordChanges.map((change, index) => {
         if (!change.added && !change.removed) {
           // Common text
@@ -319,7 +322,9 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
             key={`before-${cellIndex++}`}
             backgroundColor={cell.hasChange ? "#fef2f2" : ""}
           >
-            {hasChange ? renderCellDiffs(cell.wordChanges, "removed") : cell.before}
+            {hasChange
+              ? renderCellDiffs(cell.wordChanges, "removed")
+              : <span style={{ whiteSpace: "pre" }}>{cell.before}</span>}
           </TableCell>,
         );
         // After column (new values - highlight added parts in green)
@@ -328,7 +333,9 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
             key={`after-${cellIndex++}`}
             backgroundColor={cell.hasChange ? "#f0fdf4" : ""}
           >
-            {hasChange ? renderCellDiffs(cell.wordChanges, "added") : cell.after}
+            {hasChange
+              ? renderCellDiffs(cell.wordChanges, "added")
+              : <span style={{ whiteSpace: "pre" }}>{cell.after}</span>}
           </TableCell>,
         );
       } else {
@@ -338,7 +345,7 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
 
         if (!hasChange) {
           backgroundColor = "#f8f9fa";
-          cellContent = <span>{cell.before}</span>;
+          cellContent = <span style={{ whiteSpace: "pre" }}>{cell.before}</span>;
         } else {
           // Determine background color based on what changed
           backgroundColor = !cell.before && cell.after
@@ -350,14 +357,14 @@ const CsvDiff = ({ diffTable, config }: { diffTable: DiffTable; config: DiffConf
           if (!cell.before && cell.after) {
             // Only added value - show in green
             cellContent = (
-              <span style={{ color: "#155724", fontWeight: "bold" }}>
+              <span style={{ color: "#155724", fontWeight: "bold", whiteSpace: "pre" }}>
                 {cell.after}
               </span>
             );
           } else if (cell.before && !cell.after) {
             // Only removed value - show in red with strikethrough
             cellContent = (
-              <span style={{ color: "#721c24", textDecoration: "line-through" }}>
+              <span style={{ color: "#721c24", textDecoration: "line-through", whiteSpace: "pre" }}>
                 {cell.before}
               </span>
             );
