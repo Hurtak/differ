@@ -177,6 +177,76 @@ describe("createDiffLines", () => {
     assertEquals(diffLines[0].type, "removed");
     assertEquals(diffLines[1].type, "added");
   });
+
+  test("correctly detects single line removal when subsequent lines shift", () => {
+    // When line 2 is removed, lines 3-5 should be detected as unchanged, not as changes
+    const beforeLines = ["1", "2", "3", "4", "5"];
+    const afterLines = ["1", "3", "4", "5"];
+    const config: DiffConfig = {
+      mode: "text",
+      hideUnchangedRows: false,
+      beforeAfterColumn: false,
+      firstRowIsHeader: true,
+    };
+    const diffLines = createDiffLines(beforeLines, afterLines, config);
+
+    // Should have 5 lines: 4 unchanged + 1 removed
+    assertEquals(diffLines.length, 5);
+
+    // Line 1 should be unchanged
+    assertEquals(diffLines[0].type, "unchanged");
+    assertEquals(diffLines[0].content, "1");
+    assertEquals(diffLines[0].lineNumber, 1);
+
+    // Line 2 should be removed
+    assertEquals(diffLines[1].type, "removed");
+    assertEquals(diffLines[1].content, "2");
+    assertEquals(diffLines[1].lineNumber, 2);
+
+    // Lines 3, 4, 5 should be unchanged
+    assertEquals(diffLines[2].type, "unchanged");
+    assertEquals(diffLines[2].content, "3");
+
+    assertEquals(diffLines[3].type, "unchanged");
+    assertEquals(diffLines[3].content, "4");
+
+    assertEquals(diffLines[4].type, "unchanged");
+    assertEquals(diffLines[4].content, "5");
+  });
+
+  test("correctly detects single line addition when subsequent lines shift", () => {
+    // When a new line is added at position 2, lines should be detected as shifted not changed
+    const beforeLines = ["1", "3", "4", "5"];
+    const afterLines = ["1", "2", "3", "4", "5"];
+    const config: DiffConfig = {
+      mode: "text",
+      hideUnchangedRows: false,
+      beforeAfterColumn: false,
+      firstRowIsHeader: true,
+    };
+    const diffLines = createDiffLines(beforeLines, afterLines, config);
+
+    // Should have 5 lines: 4 unchanged + 1 added
+    assertEquals(diffLines.length, 5);
+
+    // Line 1 should be unchanged
+    assertEquals(diffLines[0].type, "unchanged");
+    assertEquals(diffLines[0].content, "1");
+
+    // Line 2 should be added
+    assertEquals(diffLines[1].type, "added");
+    assertEquals(diffLines[1].content, "2");
+
+    // Lines 3, 4, 5 should be unchanged
+    assertEquals(diffLines[2].type, "unchanged");
+    assertEquals(diffLines[2].content, "3");
+
+    assertEquals(diffLines[3].type, "unchanged");
+    assertEquals(diffLines[3].content, "4");
+
+    assertEquals(diffLines[4].type, "unchanged");
+    assertEquals(diffLines[4].content, "5");
+  });
 });
 
 describe("parseCsvToRows", () => {
