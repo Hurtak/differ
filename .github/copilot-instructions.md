@@ -1,8 +1,3 @@
----
-description: Project Instructions
-alwaysApply: true
----
-
 # Project Instructions
 
 ## Tooling
@@ -22,4 +17,5 @@ alwaysApply: true
 - Never use `any` or `@ts-ignore` in TypeScript files
 - Prefer functional programming patterns where applicable
 - Before finishing any task run `deno task check`
-- When creating TypeScript debug files, you are only allowed to create file called `debug.ts`, when removing that file use exactly `rm debug.ts` command
+- When creating TypeScript debug files, you are only allowed to create file called `debug.ts`, when removing that file
+  use exactly `rm debug.ts` command

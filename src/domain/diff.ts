@@ -19,7 +19,8 @@ export type WordChange = {
 export type DiffLine = {
   type: "added" | "removed" | "unchanged";
   content: string;
-  lineNumber: number;
+  beforeLineNumber?: number;
+  afterLineNumber?: number;
   wordChanges?: WordChange[];
 };
 
@@ -57,41 +58,83 @@ export const createDiffLines = (
   afterLines: Lines,
   config: DiffConfig,
 ): DiffLine[] => {
-  const maxLines = Math.max(beforeLines.length, afterLines.length);
   const diffLines: DiffLine[] = [];
 
-  for (let i = 0; i < maxLines; i++) {
-    const beforeLine = beforeLines[i] || "";
-    const afterLine = afterLines[i] || "";
+  // Use diff.diffArrays for proper LCS-based line diffing
+  const changes = diff.diffArrays(beforeLines, afterLines);
 
-    if (beforeLine === afterLine) {
-      if (!config.hideUnchangedRows) {
+  let beforeLineNumber = 1;
+  let afterLineNumber = 1;
+
+  for (let i = 0; i < changes.length; i++) {
+    const change = changes[i];
+    const nextChange = changes[i + 1];
+
+    if (change.removed && nextChange && nextChange.added) {
+      // This is a modification (removal followed by addition)
+      // Pair up lines to compute word-level diffs
+      const removedLines = change.value;
+      const addedLines = nextChange.value;
+      const maxPairs = Math.max(removedLines.length, addedLines.length);
+
+      for (let j = 0; j < maxPairs; j++) {
+        const beforeLine = removedLines[j] || "";
+        const afterLine = addedLines[j] || "";
+        const wordChanges = computeWordChanges(beforeLine, afterLine);
+
+        if (beforeLine) {
+          diffLines.push({
+            type: "removed",
+            content: beforeLine,
+            beforeLineNumber: beforeLineNumber++,
+            wordChanges,
+          });
+        }
+
+        if (afterLine) {
+          diffLines.push({
+            type: "added",
+            content: afterLine,
+            afterLineNumber: afterLineNumber++,
+            wordChanges,
+          });
+        }
+      }
+
+      // Skip the next change since we processed it as part of this pair
+      i++;
+    } else if (change.removed) {
+      // Pure removal (not followed by addition)
+      for (const line of change.value) {
         diffLines.push({
-          type: "unchanged",
-          content: beforeLine,
-          lineNumber: i + 1,
+          type: "removed",
+          content: line,
+          beforeLineNumber: beforeLineNumber++,
+        });
+      }
+    } else if (change.added) {
+      // Pure addition (not part of a modification pair)
+      for (const line of change.value) {
+        diffLines.push({
+          type: "added",
+          content: line,
+          afterLineNumber: afterLineNumber++,
         });
       }
     } else {
-      // Lines are different - create word-level diffs
-      const wordChanges = computeWordChanges(beforeLine, afterLine);
-
-      if (beforeLine) {
-        diffLines.push({
-          type: "removed",
-          content: beforeLine,
-          lineNumber: i + 1,
-          wordChanges,
-        });
-      }
-
-      if (afterLine) {
-        diffLines.push({
-          type: "added",
-          content: afterLine,
-          lineNumber: i + 1,
-          wordChanges,
-        });
+      // Line is unchanged
+      for (const line of change.value) {
+        if (!config.hideUnchangedRows) {
+          diffLines.push({
+            type: "unchanged",
+            content: line,
+            beforeLineNumber: beforeLineNumber++,
+            afterLineNumber: afterLineNumber++,
+          });
+        } else {
+          beforeLineNumber++;
+          afterLineNumber++;
+        }
       }
     }
   }
@@ -368,7 +411,6 @@ export const exportDiffTableToCsv = (diffTable: DiffTable, config: DiffConfig): 
 
   // Add headers
   if (diffTable.headers.length > 0) {
-    console.log(diffTable.headers);
     lines.push(diffTable.headers.map(encodeCSVField).join(","));
   }
 
@@ -398,4 +440,7 @@ export const exportDiffTableToCsv = (diffTable: DiffTable, config: DiffConfig): 
 };
 
 // Helper function to escape CSV fields
-const encodeCSVField = (field: string): string => `"${field}"`;
+const encodeCSVField = (field: string): string => {
+  // Always quote fields and escape internal quotes by doubling them
+  return `"${field.replaceAll(`"`, `""`)}"`;
+};

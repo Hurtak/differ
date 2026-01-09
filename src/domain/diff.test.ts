@@ -18,7 +18,7 @@ import {
   parseCsvToRows,
   parseTextToLines,
   stripCsvFormattingQuotes,
-} from "../domain/diff.ts";
+} from "./diff.ts";
 
 describe("parseTextToLines", () => {
   test("splits text by newlines", () => {
@@ -104,10 +104,12 @@ describe("createDiffLines", () => {
     assertEquals(diffLines.length, 2);
     assertEquals(diffLines[0].type, "unchanged");
     assertEquals(diffLines[0].content, "line1");
-    assertEquals(diffLines[0].lineNumber, 1);
+    assertEquals(diffLines[0].beforeLineNumber, 1);
+    assertEquals(diffLines[0].afterLineNumber, 1);
     assertEquals(diffLines[1].type, "unchanged");
     assertEquals(diffLines[1].content, "line2");
-    assertEquals(diffLines[1].lineNumber, 2);
+    assertEquals(diffLines[1].beforeLineNumber, 2);
+    assertEquals(diffLines[1].afterLineNumber, 2);
   });
 
   test("creates diff lines for added content", () => {
@@ -176,6 +178,118 @@ describe("createDiffLines", () => {
     assertEquals(diffLines.length, 2); // Only the changed line
     assertEquals(diffLines[0].type, "removed");
     assertEquals(diffLines[1].type, "added");
+  });
+
+  test("correctly detects single line removal when subsequent lines shift", () => {
+    // When line 2 is removed, lines 3-5 should be detected as unchanged, not as changes
+    const beforeLines = ["1", "2", "3", "4", "5"];
+    const afterLines = ["1", "3", "4", "5"];
+    const config: DiffConfig = {
+      mode: "text",
+      hideUnchangedRows: false,
+      beforeAfterColumn: false,
+      firstRowIsHeader: true,
+    };
+    const diffLines = createDiffLines(beforeLines, afterLines, config);
+
+    // Should have 5 lines: 4 unchanged + 1 removed
+    assertEquals(diffLines.length, 5);
+
+    // Line 1 should be unchanged
+    assertEquals(diffLines[0].type, "unchanged");
+    assertEquals(diffLines[0].content, "1");
+    assertEquals(diffLines[0].beforeLineNumber, 1);
+    assertEquals(diffLines[0].afterLineNumber, 1);
+
+    // Line 2 should be removed
+    assertEquals(diffLines[1].type, "removed");
+    assertEquals(diffLines[1].content, "2");
+    assertEquals(diffLines[1].beforeLineNumber, 2);
+    assertEquals(diffLines[1].afterLineNumber, undefined);
+
+    // Lines 3, 4, 5 should be unchanged
+    assertEquals(diffLines[2].type, "unchanged");
+    assertEquals(diffLines[2].content, "3");
+
+    assertEquals(diffLines[3].type, "unchanged");
+    assertEquals(diffLines[3].content, "4");
+
+    assertEquals(diffLines[4].type, "unchanged");
+    assertEquals(diffLines[4].content, "5");
+  });
+
+  test("correctly detects single line addition when subsequent lines shift", () => {
+    // When a new line is added at position 2, lines should be detected as shifted not changed
+    const beforeLines = ["1", "3", "4", "5"];
+    const afterLines = ["1", "2", "3", "4", "5"];
+    const config: DiffConfig = {
+      mode: "text",
+      hideUnchangedRows: false,
+      beforeAfterColumn: false,
+      firstRowIsHeader: true,
+    };
+    const diffLines = createDiffLines(beforeLines, afterLines, config);
+
+    // Should have 5 lines: 4 unchanged + 1 added
+    assertEquals(diffLines.length, 5);
+
+    // Line 1 should be unchanged
+    assertEquals(diffLines[0].type, "unchanged");
+    assertEquals(diffLines[0].content, "1");
+
+    // Line 2 should be added
+    assertEquals(diffLines[1].type, "added");
+    assertEquals(diffLines[1].content, "2");
+
+    // Lines 3, 4, 5 should be unchanged
+    assertEquals(diffLines[2].type, "unchanged");
+    assertEquals(diffLines[2].content, "3");
+
+    assertEquals(diffLines[3].type, "unchanged");
+    assertEquals(diffLines[3].content, "4");
+
+    assertEquals(diffLines[4].type, "unchanged");
+    assertEquals(diffLines[4].content, "5");
+  });
+
+  test("added line in middle preserves content", () => {
+    // Test the case from the bug report
+    const beforeLines = ["a", "b", "c"];
+    const afterLines = ["a", "b", "NEW", "c"];
+    const config: DiffConfig = {
+      mode: "text",
+      hideUnchangedRows: false,
+      beforeAfterColumn: false,
+      firstRowIsHeader: true,
+    };
+    const diffLines = createDiffLines(beforeLines, afterLines, config);
+
+    // Should have 4 lines: 3 unchanged + 1 added
+    assertEquals(diffLines.length, 4);
+
+    // Line 1: a (unchanged)
+    assertEquals(diffLines[0].type, "unchanged");
+    assertEquals(diffLines[0].content, "a");
+    assertEquals(diffLines[0].beforeLineNumber, 1);
+    assertEquals(diffLines[0].afterLineNumber, 1);
+
+    // Line 2: b (unchanged)
+    assertEquals(diffLines[1].type, "unchanged");
+    assertEquals(diffLines[1].content, "b");
+    assertEquals(diffLines[1].beforeLineNumber, 2);
+    assertEquals(diffLines[1].afterLineNumber, 2);
+
+    // Line 3: NEW (added)
+    assertEquals(diffLines[2].type, "added");
+    assertEquals(diffLines[2].content, "NEW");
+    assertEquals(diffLines[2].beforeLineNumber, undefined);
+    assertEquals(diffLines[2].afterLineNumber, 3);
+
+    // Line 4: c (unchanged)
+    assertEquals(diffLines[3].type, "unchanged");
+    assertEquals(diffLines[3].content, "c");
+    assertEquals(diffLines[3].beforeLineNumber, 3);
+    assertEquals(diffLines[3].afterLineNumber, 4);
   });
 });
 
@@ -569,7 +683,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "Name,Age,City\nJohn,25,NYC\nJane,31,LA";
+    const expected = '"Name","Age","City"\n"John","25","NYC"\n"Jane","31","LA"';
 
     assertEquals(csv, expected);
   });
@@ -596,7 +710,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "value1,value2";
+    const expected = `"value1","value2"`;
 
     assertEquals(csv, expected);
   });
@@ -623,7 +737,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = 'Description,Value\nHello "World",Value, with comma';
+    const expected = '"Description","Value"\n"Hello ""World""","Value, with comma"';
 
     assertEquals(csv, expected);
   });
@@ -651,7 +765,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "A,B,C\n,,new";
+    const expected = '"A","B","C"\n"","","new"';
 
     assertEquals(csv, expected);
   });
@@ -679,7 +793,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "Name,Age Before,Age After,City\nJohn,25,26,NYC";
+    const expected = '"Name","Age Before","Age After","City"\n"John","25","26","NYC"';
 
     assertEquals(csv, expected);
   });
@@ -697,7 +811,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "Name,Age";
+    const expected = '"Name","Age"';
 
     assertEquals(csv, expected);
   });
@@ -743,7 +857,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "ID,Name,Status\n1,Alice,active\n2,Robert,active\n3,Charlie,active";
+    const expected = '"ID","Name","Status"\n"1","Alice","active"\n"2","Robert","active"\n"3","Charlie","active"';
 
     assertEquals(csv, expected);
   });
@@ -770,7 +884,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "Name,Value\n,";
+    const expected = '"Name","Value"\n"",""';
 
     assertEquals(csv, expected);
   });
@@ -797,7 +911,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "Name,Value\nNew,456";
+    const expected = '"Name","Value"\n"New","456"';
 
     assertEquals(csv, expected);
   });
@@ -824,7 +938,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "Column 1 Before,Column 1 After,Column 2\nold1,new1,value2";
+    const expected = '"Column 1 Before","Column 1 After","Column 2"\n"old1","new1","value2"';
 
     assertEquals(csv, expected);
   });
@@ -928,10 +1042,7 @@ describe("extractCsvHeaders", () => {
   });
 
   test("returns empty array when no rows", () => {
-    const beforeRows: string[][] = [];
-    const afterRows: string[][] = [];
-    const expected: string[] = [];
-    assertEquals(extractCsvHeaders(beforeRows, afterRows), expected);
+    assertEquals(extractCsvHeaders([], []), []);
   });
 });
 

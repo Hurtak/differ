@@ -189,27 +189,62 @@ export const App = () => {
 
 // Text Diff Component
 const TextDiff = ({ diffLines }: { diffLines: DiffLine[] }) => {
-  const renderedLines = diffLines.map((diffLine) => {
-    if (diffLine.type === "unchanged") {
+  const renderedLines = diffLines.map(({ type, beforeLineNumber, afterLineNumber, content, wordChanges }) => {
+    const beforeNum = beforeLineNumber;
+    const afterNum = afterLineNumber;
+
+    if (type === "unchanged") {
       return (
-        <div key={diffLine.lineNumber} style={{ backgroundColor: "#f8f9fa", padding: "2px 0", whiteSpace: "pre" }}>
-          <span style={{ color: "#6c757d" }}>{diffLine.lineNumber}</span>: {diffLine.content || " "}
+        <div
+          key={`${type}-${beforeLineNumber}-${afterLineNumber}`}
+          style={{ backgroundColor: "#f8f9fa", padding: "2px 0", whiteSpace: "pre" }}
+        >
+          {/* empty space for sign */}
+          <span style={{ display: "inline-block", minWidth: "10px" }}></span>
+          <span style={{ color: "#6c757d", display: "inline-block", minWidth: "30px", textAlign: "right" }}>
+            {beforeNum}
+          </span>
+          <span
+            style={{
+              color: "#6c757d",
+              display: "inline-block",
+              minWidth: "30px",
+              textAlign: "right",
+              marginLeft: "4px",
+            }}
+          >
+            {afterNum}
+          </span>
+          : {content ?? " "}
         </div>
       );
     } else {
       // Added or removed line with word-level highlighting
-      const backgroundColor = diffLine.type === "added" ? "#d4edda" : "#f8d7da";
-      const signColor = diffLine.type === "added" ? "#155724" : "#721c24";
-      const sign = diffLine.type === "added" ? "+" : "-";
+      const backgroundColor = type === "added" ? "#d4edda" : "#f8d7da";
+      const signColor = type === "added" ? "#155724" : "#721c24";
+      const sign = type === "added" ? "+" : "-";
 
       return (
         <div
-          key={`${diffLine.type}-${diffLine.lineNumber}`}
+          key={`${type}-${beforeLineNumber}-${afterLineNumber}`}
           style={{ backgroundColor, padding: "2px 0", whiteSpace: "pre" }}
         >
-          <span style={{ color: signColor }}>{sign}</span>
-          <span style={{ color: "#6c757d" }}>{diffLine.lineNumber}</span>:{" "}
-          {renderWordDiffs(diffLine.wordChanges || [], diffLine.type)}
+          <span style={{ color: signColor, display: "inline-block", minWidth: "10px" }}>{sign}</span>
+          <span style={{ color: "#6c757d", display: "inline-block", minWidth: "30px", textAlign: "right" }}>
+            {beforeNum ?? ""}
+          </span>
+          <span
+            style={{
+              color: "#6c757d",
+              display: "inline-block",
+              minWidth: "30px",
+              textAlign: "right",
+              marginLeft: "4px",
+            }}
+          >
+            {afterNum ?? ""}
+          </span>
+          : {wordChanges && wordChanges.length > 0 ? renderWordDiffs(wordChanges, type) : content ?? " "}
         </div>
       );
     }
