@@ -79,110 +79,143 @@ export const App = () => {
   };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "1900px", margin: "0 auto", fontFamily: "Arial, sans-serif" }}>
-      <h1>Differ</h1>
+    <div
+      style={{
+        boxSizing: "border-box",
+        padding: "20px",
+        maxWidth: "1900px",
+        margin: "0 auto",
+        fontFamily: "Arial, sans-serif",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <div style={{ flex: 1 }}>
+        <h1>Differ</h1>
 
-      {/* Input Section */}
-      <div style={{ display: "flex", gap: "20px", marginBottom: "20px" }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h3>Before</h3>
-          <TextArea
-            value={beforeText}
-            onChange={(e) => setBeforeText(e.target.value)}
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, setBeforeText)}
-            placeholder="Paste text here or drag and drop a text or CSV file..."
-          />
-        </div>
+        {/* Input Section */}
+        <div style={{ display: "flex", gap: "20px", marginBottom: "20px" }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3>Before</h3>
+            <TextArea
+              value={beforeText}
+              onChange={(e) => setBeforeText(e.target.value)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, setBeforeText)}
+              placeholder="Paste text here or drag and drop a text or CSV file..."
+            />
+          </div>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h3>After</h3>
-          <TextArea
-            value={afterText}
-            onChange={(e) => setAfterText(e.target.value)}
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, setAfterText)}
-            placeholder="Paste text here or drag and drop a text or CSV file..."
-          />
-        </div>
-      </div>
-
-      {/* Diff View */}
-      {(beforeText && afterText) && (
-        <div>
-          {/* Mode Tabs */}
-          <StyledFieldset
-            legend="Mode"
-            legendStyle={{
-              fontSize: "16px",
-              fontWeight: "normal",
-            }}
-          >
-            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-              <ModeButton
-                isActive={config.mode === "text"}
-                onClick={() => setConfig({ ...config, mode: "text" })}
-              >
-                Text
-              </ModeButton>
-              <ModeButton
-                isActive={config.mode === "csv"}
-                onClick={() => setConfig({ ...config, mode: "csv" })}
-              >
-                CSV
-              </ModeButton>
-            </div>
-          </StyledFieldset>
-
-          {/* Configuration */}
-          <StyledFieldset legend="Configuration">
-            <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center" }}>
-              <CheckboxLabel
-                checked={config.hideUnchangedRows}
-                onChange={(e) => setConfig({ ...config, hideUnchangedRows: e.target.checked })}
-              >
-                Hide unchanged rows
-              </CheckboxLabel>
-
-              {config.mode === "csv" && (
-                <>
-                  <CheckboxLabel
-                    checked={config.firstRowIsHeader}
-                    onChange={(e) => setConfig({ ...config, firstRowIsHeader: e.target.checked })}
-                  >
-                    First row is header
-                  </CheckboxLabel>
-                  <CheckboxLabel
-                    checked={config.beforeAfterColumn}
-                    onChange={(e) => setConfig({ ...config, beforeAfterColumn: e.target.checked })}
-                  >
-                    Before/After Column
-                  </CheckboxLabel>
-                  <ActionButton
-                    onClick={handleDownloadCsv}
-                    variant="success"
-                    size="small"
-                  >
-                    Download CSV
-                  </ActionButton>
-                </>
-              )}
-            </div>
-          </StyledFieldset>
-
-          {/* Diff Output */}
-          <div
-            style={{
-              border: "1px solid #dee2e6",
-              borderRadius: "5px",
-              padding: "20px",
-              backgroundColor: "#f8f9fa",
-            }}
-          >
-            {renderDiff()}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3>After</h3>
+            <TextArea
+              value={afterText}
+              onChange={(e) => setAfterText(e.target.value)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, setAfterText)}
+              placeholder="Paste text here or drag and drop a text or CSV file..."
+            />
           </div>
         </div>
-      )}
+
+        {/* Diff View */}
+        {(beforeText && afterText) && (
+          <div>
+            {/* Mode Tabs */}
+            <StyledFieldset
+              legend="Mode"
+              legendStyle={{
+                fontSize: "16px",
+                fontWeight: "normal",
+              }}
+            >
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <ModeButton
+                  isActive={config.mode === "text"}
+                  onClick={() => setConfig({ ...config, mode: "text" })}
+                >
+                  Text
+                </ModeButton>
+                <ModeButton
+                  isActive={config.mode === "csv"}
+                  onClick={() => setConfig({ ...config, mode: "csv" })}
+                >
+                  CSV
+                </ModeButton>
+              </div>
+            </StyledFieldset>
+
+            {/* Configuration */}
+            <StyledFieldset legend="Configuration">
+              <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center" }}>
+                <CheckboxLabel
+                  checked={config.hideUnchangedRows}
+                  onChange={(e) => setConfig({ ...config, hideUnchangedRows: e.target.checked })}
+                >
+                  Hide unchanged rows
+                </CheckboxLabel>
+
+                {config.mode === "csv" && (
+                  <>
+                    <CheckboxLabel
+                      checked={config.firstRowIsHeader}
+                      onChange={(e) => setConfig({ ...config, firstRowIsHeader: e.target.checked })}
+                    >
+                      First row is header
+                    </CheckboxLabel>
+                    <CheckboxLabel
+                      checked={config.beforeAfterColumn}
+                      onChange={(e) => setConfig({ ...config, beforeAfterColumn: e.target.checked })}
+                    >
+                      Before/After Column
+                    </CheckboxLabel>
+                    <ActionButton
+                      onClick={handleDownloadCsv}
+                      variant="success"
+                      size="small"
+                    >
+                      Download CSV
+                    </ActionButton>
+                  </>
+                )}
+              </div>
+            </StyledFieldset>
+
+            {/* Diff Output */}
+            <div
+              style={{
+                border: "1px solid #dee2e6",
+                borderRadius: "5px",
+                padding: "20px",
+                backgroundColor: "#f8f9fa",
+              }}
+            >
+              {renderDiff()}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <footer
+        style={{
+          marginTop: "40px",
+          paddingTop: "20px",
+          textAlign: "center",
+          opacity: 0.8,
+          fontSize: "14px",
+        }}
+      >
+        Made by <a href="https://petrhurtak.com" target="_blank" style={{ color: "blue" }}>petrhurtak.com</a> | Code at
+        {" "}
+        <a
+          href="https://github.com/hurtak/differ/"
+          target="_blank"
+          style={{ color: "blue" }}
+        >
+          GitHub
+        </a>
+      </footer>
     </div>
   );
 };

@@ -14,4 +14,4 @@
 - scripts (see `deno.json`)
   - dev server `deno task dev`
   - build `deno task build`
-  - verify (types/lint/format) `deno task check`
+  - check (type check + test + lint + format) `deno task check`
