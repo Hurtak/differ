@@ -18,7 +18,7 @@ import {
   parseCsvToRows,
   parseTextToLines,
   stripCsvFormattingQuotes,
-} from "../domain/diff.ts";
+} from "./diff.ts";
 
 describe("parseTextToLines", () => {
   test("splits text by newlines", () => {
@@ -639,7 +639,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "Name,Age,City\nJohn,25,NYC\nJane,31,LA";
+    const expected = '"Name","Age","City"\n"John","25","NYC"\n"Jane","31","LA"';
 
     assertEquals(csv, expected);
   });
@@ -666,7 +666,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "value1,value2";
+    const expected = `"value1","value2"`;
 
     assertEquals(csv, expected);
   });
@@ -693,7 +693,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = 'Description,Value\nHello "World",Value, with comma';
+    const expected = '"Description","Value"\n"Hello ""World""","Value, with comma"';
 
     assertEquals(csv, expected);
   });
@@ -721,7 +721,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "A,B,C\n,,new";
+    const expected = '"A","B","C"\n"","","new"';
 
     assertEquals(csv, expected);
   });
@@ -749,7 +749,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "Name,Age Before,Age After,City\nJohn,25,26,NYC";
+    const expected = '"Name","Age Before","Age After","City"\n"John","25","26","NYC"';
 
     assertEquals(csv, expected);
   });
@@ -767,7 +767,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "Name,Age";
+    const expected = '"Name","Age"';
 
     assertEquals(csv, expected);
   });
@@ -813,7 +813,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "ID,Name,Status\n1,Alice,active\n2,Robert,active\n3,Charlie,active";
+    const expected = '"ID","Name","Status"\n"1","Alice","active"\n"2","Robert","active"\n"3","Charlie","active"';
 
     assertEquals(csv, expected);
   });
@@ -840,7 +840,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "Name,Value\n,";
+    const expected = '"Name","Value"\n"",""';
 
     assertEquals(csv, expected);
   });
@@ -867,7 +867,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "Name,Value\nNew,456";
+    const expected = '"Name","Value"\n"New","456"';
 
     assertEquals(csv, expected);
   });
@@ -894,7 +894,7 @@ describe("exportDiffTableToCsv", () => {
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
-    const expected = "Column 1 Before,Column 1 After,Column 2\nold1,new1,value2";
+    const expected = '"Column 1 Before","Column 1 After","Column 2"\n"old1","new1","value2"';
 
     assertEquals(csv, expected);
   });

@@ -407,7 +407,6 @@ export const exportDiffTableToCsv = (diffTable: DiffTable, config: DiffConfig): 
 
   // Add headers
   if (diffTable.headers.length > 0) {
-    console.log(diffTable.headers);
     lines.push(diffTable.headers.map(encodeCSVField).join(","));
   }
 
@@ -437,4 +436,7 @@ export const exportDiffTableToCsv = (diffTable: DiffTable, config: DiffConfig): 
 };
 
 // Helper function to escape CSV fields
-const encodeCSVField = (field: string): string => `"${field}"`;
+const encodeCSVField = (field: string): string => {
+  // Always quote fields and escape internal quotes by doubling them
+  return `"${field.replaceAll(`"`, `""`)}"`;
+};
