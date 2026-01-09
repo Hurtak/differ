@@ -111,7 +111,7 @@ export const createDiffLines = (
         });
       }
     } else if (change.added) {
-      // Pure addition (not preceded by removal - already handled above)
+      // Pure addition (not part of a modification pair)
       for (const line of change.value) {
         diffLines.push({
           type: "added",
