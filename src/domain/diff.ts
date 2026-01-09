@@ -19,7 +19,8 @@ export type WordChange = {
 export type DiffLine = {
   type: "added" | "removed" | "unchanged";
   content: string;
-  lineNumber: number;
+  beforeLineNumber?: number;
+  afterLineNumber?: number;
   wordChanges?: WordChange[];
 };
 
@@ -62,7 +63,8 @@ export const createDiffLines = (
   // Use diff.diffArrays for proper LCS-based line diffing
   const changes = diff.diffArrays(beforeLines, afterLines);
 
-  let lineNumber = 1;
+  let beforeLineNumber = 1;
+  let afterLineNumber = 1;
 
   for (let i = 0; i < changes.length; i++) {
     const change = changes[i];
@@ -84,7 +86,7 @@ export const createDiffLines = (
           diffLines.push({
             type: "removed",
             content: beforeLine,
-            lineNumber: lineNumber++,
+            beforeLineNumber: beforeLineNumber++,
             wordChanges,
           });
         }
@@ -93,7 +95,7 @@ export const createDiffLines = (
           diffLines.push({
             type: "added",
             content: afterLine,
-            lineNumber: lineNumber++,
+            afterLineNumber: afterLineNumber++,
             wordChanges,
           });
         }
@@ -107,7 +109,7 @@ export const createDiffLines = (
         diffLines.push({
           type: "removed",
           content: line,
-          lineNumber: lineNumber++,
+          beforeLineNumber: beforeLineNumber++,
         });
       }
     } else if (change.added) {
@@ -116,7 +118,7 @@ export const createDiffLines = (
         diffLines.push({
           type: "added",
           content: line,
-          lineNumber: lineNumber++,
+          afterLineNumber: afterLineNumber++,
         });
       }
     } else {
@@ -126,10 +128,12 @@ export const createDiffLines = (
           diffLines.push({
             type: "unchanged",
             content: line,
-            lineNumber: lineNumber++,
+            beforeLineNumber: beforeLineNumber++,
+            afterLineNumber: afterLineNumber++,
           });
         } else {
-          lineNumber++;
+          beforeLineNumber++;
+          afterLineNumber++;
         }
       }
     }
