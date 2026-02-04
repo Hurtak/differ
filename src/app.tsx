@@ -293,7 +293,7 @@ const TextDiff = ({ diffLines }: { diffLines: DiffLine[] }) => {
 // Helper function to render word-level diffs
 const renderWordDiffs = (wordChanges: WordChange[], lineType: "added" | "removed") => {
   return (
-    <span style={{ whiteSpace: "pre" }}>
+    <span style={{ whiteSpace: "pre-wrap" }}>
       {wordChanges.map((change, index) => {
         if (!change.added && !change.removed) {
           // Common text - show in both lines
