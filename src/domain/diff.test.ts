@@ -46,7 +46,7 @@ describe("computeWordChanges", () => {
   test("detects added words", () => {
     const before = "hello";
     const after = "hello world";
-    const changes = computeWordChanges(before, after);
+    const changes = computeWordChanges(before, after, false);
     assertEquals(changes.length, 2);
     assertEquals(changes[0].value, "hello ");
     assertEquals(changes[0].added, false);
@@ -58,7 +58,7 @@ describe("computeWordChanges", () => {
   test("detects removed words", () => {
     const before = "hello world";
     const after = "hello";
-    const changes = computeWordChanges(before, after);
+    const changes = computeWordChanges(before, after, false);
     assertEquals(changes.length, 2);
     assertEquals(changes[0].value, "hello");
     assertEquals(changes[0].added, false);
@@ -70,7 +70,7 @@ describe("computeWordChanges", () => {
   test("detects modified words", () => {
     const before = "hello";
     const after = "hi";
-    const changes = computeWordChanges(before, after);
+    const changes = computeWordChanges(before, after, false);
     assertEquals(changes.length, 2);
     assertEquals(changes[0].value, "hello");
     assertEquals(changes[0].removed, true);
@@ -81,7 +81,7 @@ describe("computeWordChanges", () => {
   test("handles identical strings", () => {
     const before = "hello";
     const after = "hello";
-    const changes = computeWordChanges(before, after);
+    const changes = computeWordChanges(before, after, false);
     assertEquals(changes.length, 1);
     assertEquals(changes[0].value, "hello");
     assertEquals(changes[0].added, false);
@@ -98,6 +98,7 @@ describe("createDiffLines", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffLines = createDiffLines(beforeLines, afterLines, config);
 
@@ -120,6 +121,7 @@ describe("createDiffLines", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffLines = createDiffLines(beforeLines, afterLines, config);
 
@@ -137,6 +139,7 @@ describe("createDiffLines", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffLines = createDiffLines(beforeLines, afterLines, config);
 
@@ -154,6 +157,7 @@ describe("createDiffLines", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffLines = createDiffLines(beforeLines, afterLines, config);
 
@@ -172,6 +176,7 @@ describe("createDiffLines", () => {
       hideUnchangedRows: true,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffLines = createDiffLines(beforeLines, afterLines, config);
 
@@ -189,6 +194,7 @@ describe("createDiffLines", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffLines = createDiffLines(beforeLines, afterLines, config);
 
@@ -227,6 +233,7 @@ describe("createDiffLines", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffLines = createDiffLines(beforeLines, afterLines, config);
 
@@ -261,6 +268,7 @@ describe("createDiffLines", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffLines = createDiffLines(beforeLines, afterLines, config);
 
@@ -324,7 +332,7 @@ describe("computeCellWordChanges", () => {
   test("computes word changes for cell content", () => {
     const before = "old";
     const after = "new";
-    const changes = computeCellWordChanges(before, after);
+    const changes = computeCellWordChanges(before, after, false);
 
     assertEquals(changes.length, 2);
     assertEquals(changes[0].value, "old");
@@ -334,7 +342,7 @@ describe("computeCellWordChanges", () => {
   });
 
   test("handles empty cells", () => {
-    const changes = computeCellWordChanges("", "new");
+    const changes = computeCellWordChanges("", "new", false);
     assertEquals(changes[0].value, "new");
     assertEquals(changes[0].added, true);
   });
@@ -344,7 +352,7 @@ describe("createDiffCells", () => {
   test("creates diff cells for identical rows", () => {
     const beforeRow = ["a", "b", "c"];
     const afterRow = ["a", "b", "c"];
-    const diffCells = createDiffCells(beforeRow, afterRow);
+    const diffCells = createDiffCells(beforeRow, afterRow, false);
 
     assertEquals(diffCells.length, 3);
     assertEquals(diffCells[0].hasChange, false);
@@ -355,7 +363,7 @@ describe("createDiffCells", () => {
   test("creates diff cells with changes", () => {
     const beforeRow = ["a", "b", "c"];
     const afterRow = ["a", "changed", "c"];
-    const diffCells = createDiffCells(beforeRow, afterRow);
+    const diffCells = createDiffCells(beforeRow, afterRow, false);
 
     assertEquals(diffCells[1].hasChange, true);
     assertEquals(diffCells[1].before, "b");
@@ -366,12 +374,22 @@ describe("createDiffCells", () => {
   test("handles rows with different lengths", () => {
     const beforeRow = ["a", "b"];
     const afterRow = ["a", "b", "c"];
-    const diffCells = createDiffCells(beforeRow, afterRow);
+    const diffCells = createDiffCells(beforeRow, afterRow, false);
 
     assertEquals(diffCells.length, 3);
     assertEquals(diffCells[2].before, "");
     assertEquals(diffCells[2].after, "c");
     assertEquals(diffCells[2].hasChange, true);
+  });
+
+  test("captures whitespace-only changes when enabled", () => {
+    const beforeRow = ["a b"];
+    const afterRow = ["a  b"];
+    const diffCells = createDiffCells(beforeRow, afterRow, true);
+
+    assertEquals(diffCells[0].hasChange, true);
+    assertEquals(diffCells[0].before, "a b");
+    assertEquals(diffCells[0].after, "a  b");
   });
 });
 
@@ -384,6 +402,7 @@ describe("createDiffRows", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffRows = createDiffRows(beforeRows, afterRows, config);
 
@@ -400,6 +419,7 @@ describe("createDiffRows", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffRows = createDiffRows(beforeRows, afterRows, config);
 
@@ -416,6 +436,7 @@ describe("createDiffRows", () => {
       hideUnchangedRows: true,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffRows = createDiffRows(beforeRows, afterRows, config);
 
@@ -465,6 +486,7 @@ describe("generateCsvHeaders", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const headers = generateCsvHeaders(3, changedColumns, config);
 
@@ -478,6 +500,7 @@ describe("generateCsvHeaders", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: true,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const headers = generateCsvHeaders(3, changedColumns, config);
 
@@ -494,6 +517,7 @@ describe("createCsvDiffTable", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffTable = createCsvDiffTable(beforeText, afterText, config);
 
@@ -510,6 +534,7 @@ describe("createCsvDiffTable", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffTable = createCsvDiffTable(beforeText, afterText, config);
 
@@ -525,6 +550,7 @@ describe("createCsvDiffTable", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: true,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffTable = createCsvDiffTable(beforeText, afterText, config);
 
@@ -552,6 +578,7 @@ describe("computeTextDiff", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffLines = computeTextDiff(beforeText, afterText, config);
 
@@ -572,6 +599,7 @@ describe("computeTextDiff", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffLines = computeTextDiff("", "", config);
 
@@ -588,6 +616,7 @@ describe("computeTextDiff", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffLines = computeTextDiff(beforeText, afterText, config);
 
@@ -604,6 +633,7 @@ describe("computeTextDiff", () => {
       hideUnchangedRows: true,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffLines = computeTextDiff(beforeText, afterText, config);
 
@@ -622,6 +652,7 @@ describe("computeCsvDiff", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffTable = computeCsvDiff(beforeText, afterText, config);
 
@@ -641,6 +672,7 @@ describe("computeCsvDiff", () => {
       hideUnchangedRows: true,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
     const diffTable = computeCsvDiff(beforeText, afterText, config);
 
@@ -680,6 +712,7 @@ describe("exportDiffTableToCsv", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
@@ -707,6 +740,7 @@ describe("exportDiffTableToCsv", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
@@ -734,6 +768,7 @@ describe("exportDiffTableToCsv", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
@@ -762,6 +797,7 @@ describe("exportDiffTableToCsv", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
@@ -790,6 +826,7 @@ describe("exportDiffTableToCsv", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: true,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
@@ -808,6 +845,7 @@ describe("exportDiffTableToCsv", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
@@ -854,6 +892,7 @@ describe("exportDiffTableToCsv", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
@@ -881,6 +920,7 @@ describe("exportDiffTableToCsv", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
@@ -908,6 +948,7 @@ describe("exportDiffTableToCsv", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: false,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
@@ -935,6 +976,7 @@ describe("exportDiffTableToCsv", () => {
       hideUnchangedRows: false,
       beforeAfterColumn: true,
       firstRowIsHeader: true,
+      showWhitespace: false,
     };
 
     const csv = exportDiffTableToCsv(diffTable, config);
@@ -1050,7 +1092,7 @@ describe("createDiffCells with quoted fields", () => {
   test("strips formatting quotes from cells", () => {
     const beforeRow = ["John", "25", "NYC"];
     const afterRow = ["Jane", "26", "LA"];
-    const diffCells = createDiffCells(beforeRow, afterRow);
+    const diffCells = createDiffCells(beforeRow, afterRow, false);
 
     assertEquals(diffCells[0].before, "John");
     assertEquals(diffCells[0].after, "Jane");
@@ -1063,7 +1105,7 @@ describe("createDiffCells with quoted fields", () => {
   test("preserves content quotes in cells", () => {
     const beforeRow = ["John,Doe", 'He said "Hi"'];
     const afterRow = ["Jane,Doe", 'She said "Hi"'];
-    const diffCells = createDiffCells(beforeRow, afterRow);
+    const diffCells = createDiffCells(beforeRow, afterRow, false);
 
     assertEquals(diffCells[0].before, "John,Doe");
     assertEquals(diffCells[0].after, "Jane,Doe");

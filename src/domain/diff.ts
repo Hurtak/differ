@@ -6,6 +6,7 @@ export type DiffConfig = {
   hideUnchangedRows: boolean;
   beforeAfterColumn: boolean;
   firstRowIsHeader: boolean;
+  showWhitespace: boolean;
 };
 
 export type Lines = string[];
@@ -49,8 +50,12 @@ export const parseTextToLines = (text: string): Lines => {
   return text.split(/\n/);
 };
 
-export const computeWordChanges = (before: string, after: string): WordChange[] => {
-  return diff.diffWords(before, after);
+export const computeWordChanges = (
+  before: string,
+  after: string,
+  showWhitespace: boolean,
+): WordChange[] => {
+  return showWhitespace ? diff.diffWordsWithSpace(before, after) : diff.diffWords(before, after);
 };
 
 export const createDiffLines = (
@@ -80,7 +85,7 @@ export const createDiffLines = (
       for (let j = 0; j < maxPairs; j++) {
         const beforeLine = removedLines[j] || "";
         const afterLine = addedLines[j] || "";
-        const wordChanges = computeWordChanges(beforeLine, afterLine);
+        const wordChanges = computeWordChanges(beforeLine, afterLine, config.showWhitespace);
 
         if (beforeLine) {
           diffLines.push({
@@ -201,16 +206,21 @@ export const stripCsvFormattingQuotes = (field: string): string => {
   return field;
 };
 
-export const computeCellWordChanges = (beforeCell: string, afterCell: string): WordChange[] => {
+export const computeCellWordChanges = (
+  beforeCell: string,
+  afterCell: string,
+  showWhitespace: boolean,
+): WordChange[] => {
   const before = beforeCell || "";
   const after = afterCell || "";
 
-  return diff.diffWords(before, after);
+  return showWhitespace ? diff.diffWordsWithSpace(before, after) : diff.diffWords(before, after);
 };
 
 export const createDiffCells = (
   beforeRow: CSVRow,
   afterRow: CSVRow,
+  showWhitespace: boolean,
 ): DiffCell[] => {
   const maxCells = Math.max(beforeRow.length, afterRow.length);
   const diffCells: DiffCell[] = [];
@@ -219,7 +229,7 @@ export const createDiffCells = (
     const beforeCell = beforeRow[j] || "";
     const afterCell = afterRow[j] || "";
     const hasChange = beforeCell !== afterCell;
-    const wordChanges = hasChange ? computeCellWordChanges(beforeCell, afterCell) : [];
+    const wordChanges = hasChange ? computeCellWordChanges(beforeCell, afterCell, showWhitespace) : [];
 
     diffCells.push({
       before: stripCsvFormattingQuotes(beforeCell),
@@ -255,7 +265,7 @@ export const createDiffRowsWithOffset = (
 
     if (!beforeRow.length && !afterRow.length) continue;
 
-    const cells = createDiffCells(beforeRow, afterRow);
+    const cells = createDiffCells(beforeRow, afterRow, config.showWhitespace);
     const hasChanges = cells.some((cell) => cell.hasChange);
 
     if (!config.hideUnchangedRows || hasChanges) {

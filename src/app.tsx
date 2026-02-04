@@ -30,6 +30,7 @@ export const App = () => {
     hideUnchangedRows: false,
     beforeAfterColumn: false,
     firstRowIsHeader: true,
+    showWhitespace: true,
   });
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -133,13 +134,13 @@ export const App = () => {
               <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                 <ModeButton
                   isActive={config.mode === "text"}
-                  onClick={() => setConfig({ ...config, mode: "text" })}
+                  onClick={() => setConfig((c) => ({ ...c, mode: "text" }))}
                 >
                   Text
                 </ModeButton>
                 <ModeButton
                   isActive={config.mode === "csv"}
-                  onClick={() => setConfig({ ...config, mode: "csv" })}
+                  onClick={() => setConfig((c) => ({ ...c, mode: "csv" }))}
                 >
                   CSV
                 </ModeButton>
@@ -151,22 +152,28 @@ export const App = () => {
               <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center" }}>
                 <CheckboxLabel
                   checked={config.hideUnchangedRows}
-                  onChange={(e) => setConfig({ ...config, hideUnchangedRows: e.target.checked })}
+                  onChange={(e) => setConfig((c) => ({ ...c, hideUnchangedRows: e.target.checked }))}
                 >
                   Hide unchanged rows
+                </CheckboxLabel>
+                <CheckboxLabel
+                  checked={config.showWhitespace}
+                  onChange={(e) => setConfig((c) => ({ ...c, showWhitespace: e.target.checked }))}
+                >
+                  Show whitespace
                 </CheckboxLabel>
 
                 {config.mode === "csv" && (
                   <>
                     <CheckboxLabel
                       checked={config.firstRowIsHeader}
-                      onChange={(e) => setConfig({ ...config, firstRowIsHeader: e.target.checked })}
+                      onChange={(e) => setConfig((c) => ({ ...c, firstRowIsHeader: e.target.checked }))}
                     >
                       First row is header
                     </CheckboxLabel>
                     <CheckboxLabel
                       checked={config.beforeAfterColumn}
-                      onChange={(e) => setConfig({ ...config, beforeAfterColumn: e.target.checked })}
+                      onChange={(e) => setConfig((c) => ({ ...c, beforeAfterColumn: e.target.checked }))}
                     >
                       Before/After Column
                     </CheckboxLabel>
