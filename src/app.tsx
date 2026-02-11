@@ -255,7 +255,7 @@ const TextDiff = ({ diffLines }: { diffLines: DiffLine[] }) => {
           >
             {afterNum}
           </span>
-          : {content ?? " "}
+          : <span style={{ whiteSpace: "pre-wrap" }}>{content ?? " "}</span>
         </div>
       );
     } else {
@@ -284,7 +284,9 @@ const TextDiff = ({ diffLines }: { diffLines: DiffLine[] }) => {
           >
             {afterNum ?? ""}
           </span>
-          : {wordChanges && wordChanges.length > 0 ? renderWordDiffs(wordChanges, type) : content ?? " "}
+          : {wordChanges && wordChanges.length > 0
+            ? renderWordDiffs(wordChanges, type)
+            : <span style={{ whiteSpace: "pre-wrap" }}>{content ?? " "}</span>}
         </div>
       );
     }
